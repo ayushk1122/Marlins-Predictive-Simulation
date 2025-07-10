@@ -59,7 +59,7 @@ def download_acuna_complete_career():
             'spin_rate_deprecated', 'break_angle_deprecated', 'break_length_deprecated',
             'stand', 'effective_speed', 'babip_value', 'iso_value',
             'launch_speed_angle', 'hyper_speed', 'age_pit', 'age_bat',
-            'age_pit_legacy', 'age_bat_legacy', 'attack_direction', 'home_team', 'stadium'
+            'age_pit_legacy', 'age_bat_legacy', 'attack_direction', 'home_team', 
         ]
         
         # Filter to only include columns that exist in the dataset
