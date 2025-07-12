@@ -4,6 +4,180 @@ import numpy as np
 import pickle
 from sklearn.preprocessing import StandardScaler
 import os
+import warnings
+warnings.filterwarnings('ignore')
+from comprehensive_count_features import calculate_comprehensive_count_features, get_count_features_for_pitch, analyze_count_patterns
+
+def load_career_data():
+    """Load career data for both hitter and pitcher to calculate actual features"""
+    try:
+        # Load hitter career data
+        hitter_df = pd.read_csv('ronald_acuna_jr_complete_career_statcast.csv')
+        
+        # Load pitcher career data  
+        pitcher_df = pd.read_csv('sandy_alcantara_complete_career_statcast.csv')
+        
+        return hitter_df, pitcher_df
+    except Exception as e:
+        print(f"✗ Error loading career data: {e}")
+        return None, None
+
+def calculate_hitter_features(hitter_df):
+    """Calculate actual hitter-specific features from career data"""
+    
+    # Filter to swing events only
+    swing_events = ['swinging_strike', 'swinging_strike_blocked', 'foul', 'foul_tip', 'foul_bunt',
+                   'missed_bunt', 'bunt_foul_tip', 'single', 'double', 'triple', 'home_run',
+                   'groundout', 'force_out', 'double_play', 'triple_play', 'sac_fly', 'sac_bunt',
+                   'field_error', 'fielders_choice', 'fielders_choice_out', 'sac_fly_double_play',
+                   'sac_bunt_double_play', 'grounded_into_double_play', 'batter_interference',
+                   'catcher_interference', 'fan_interference', 'strikeout', 'strikeout_double_play', 
+                   'strikeout_triple_play', 'walk', 'intent_walk', 'hit_by_pitch',
+                   'sacrifice_bunt_double_play', 'sacrifice_bunt_triple_play', 'umpire_interference']
+    
+    swing_df = hitter_df[hitter_df['events'].isin(swing_events)].copy()
+    
+    if len(swing_df) == 0:
+        print("No swing events found in hitter career data")
+        return {}
+    
+    # Calculate movement magnitude for hitter data
+    if 'horizontal_break' in swing_df.columns and 'vertical_break' in swing_df.columns:
+        swing_df['movement_magnitude'] = np.sqrt(swing_df['horizontal_break']**2 + swing_df['vertical_break']**2)
+    elif 'pfx_x' in swing_df.columns and 'pfx_z' in swing_df.columns:
+        swing_df['movement_magnitude'] = np.sqrt(swing_df['pfx_x']**2 + swing_df['pfx_z']**2)
+    else:
+        swing_df['movement_magnitude'] = swing_df['release_spin_rate'] / 1000
+    
+    # Calculate actual swing rates by pitch type
+    fastball_types = ['FF', 'SI', 'FC', 'FT']
+    breaking_types = ['SL', 'CU', 'KC', 'SV']
+    offspeed_types = ['CH', 'FS', 'FO']
+    
+    fastball_swings = swing_df[swing_df['pitch_type'].isin(fastball_types)]
+    breaking_swings = swing_df[swing_df['pitch_type'].isin(breaking_types)]
+    offspeed_swings = swing_df[swing_df['pitch_type'].isin(offspeed_types)]
+    
+    hitter_features = {}
+    
+    # Pitch type swing rates
+    hitter_features['acuna_fastball_swing_rate'] = len(fastball_swings) / len(swing_df) if len(swing_df) > 0 else 0.0
+    hitter_features['acuna_breaking_swing_rate'] = len(breaking_swings) / len(swing_df) if len(swing_df) > 0 else 0.0
+    hitter_features['acuna_offspeed_swing_rate'] = len(offspeed_swings) / len(swing_df) if len(swing_df) > 0 else 0.0
+    
+    # Zone swing rates
+    zone_swings = swing_df[((swing_df['plate_x'].abs() <= 0.7) & (swing_df['plate_z'] >= 1.5) & (swing_df['plate_z'] <= 3.5))]
+    outside_swings = swing_df[swing_df['plate_x'].abs() > 0.7]
+    high_swings = swing_df[swing_df['plate_z'] > 3.0]
+    low_swings = swing_df[swing_df['plate_z'] < 2.0]
+    
+    hitter_features['acuna_zone_swing_rate'] = len(zone_swings) / len(swing_df) if len(swing_df) > 0 else 0.0
+    hitter_features['acuna_outside_swing_rate'] = len(outside_swings) / len(swing_df) if len(swing_df) > 0 else 0.0
+    hitter_features['acuna_high_swing_rate'] = len(high_swings) / len(swing_df) if len(swing_df) > 0 else 0.0
+    hitter_features['acuna_low_swing_rate'] = len(low_swings) / len(swing_df) if len(swing_df) > 0 else 0.0
+    
+    # Count-based swing rates
+    ahead_swings = swing_df[swing_df['balls'] > swing_df['strikes']]
+    behind_swings = swing_df[swing_df['strikes'] > swing_df['balls']]
+    two_strikes_swings = swing_df[swing_df['strikes'] >= 2]
+    full_count_swings = swing_df[(swing_df['balls'] == 3) & (swing_df['strikes'] == 2)]
+    
+    hitter_features['acuna_ahead_swing_rate'] = len(ahead_swings) / len(swing_df) if len(swing_df) > 0 else 0.0
+    hitter_features['acuna_behind_swing_rate'] = len(behind_swings) / len(swing_df) if len(swing_df) > 0 else 0.0
+    hitter_features['acuna_two_strikes_swing_rate'] = len(two_strikes_swings) / len(swing_df) if len(swing_df) > 0 else 0.0
+    hitter_features['acuna_full_count_swing_rate'] = len(full_count_swings) / len(swing_df) if len(swing_df) > 0 else 0.0
+    
+    # Velocity-based swing rates
+    high_vel_swings = swing_df[swing_df['release_speed'] > 95]
+    low_vel_swings = swing_df[swing_df['release_speed'] < 85]
+    
+    hitter_features['acuna_high_vel_swing_rate'] = len(high_vel_swings) / len(swing_df) if len(swing_df) > 0 else 0.0
+    hitter_features['acuna_low_vel_swing_rate'] = len(low_vel_swings) / len(swing_df) if len(swing_df) > 0 else 0.0
+    
+    # Movement-based swing rates
+    high_movement_swings = swing_df[swing_df['movement_magnitude'] > 8]
+    low_movement_swings = swing_df[swing_df['movement_magnitude'] < 4]
+    
+    hitter_features['acuna_high_movement_swing_rate'] = len(high_movement_swings) / len(swing_df) if len(swing_df) > 0 else 0.0
+    hitter_features['acuna_low_movement_swing_rate'] = len(low_movement_swings) / len(swing_df) if len(swing_df) > 0 else 0.0
+    
+    # Situational swing rates
+    # Calculate count_total from balls and strikes if not present
+    if 'count_total' not in swing_df.columns:
+        swing_df['count_total'] = swing_df['balls'] + swing_df['strikes']
+    
+    first_pitch_swings = swing_df[swing_df['count_total'] == 0]
+    last_pitch_swings = swing_df[swing_df['count_total'] >= 5]
+    
+    hitter_features['acuna_first_pitch_swing_rate'] = len(first_pitch_swings) / len(swing_df) if len(swing_df) > 0 else 0.0
+    hitter_features['acuna_last_pitch_swing_rate'] = len(last_pitch_swings) / len(swing_df) if len(swing_df) > 0 else 0.0
+    
+    # Calculate comprehensive count features dynamically from career data
+    count_features, count_results = calculate_comprehensive_count_features(hitter_df)
+    
+    # Add count features to hitter features
+    for feature_name, feature_value in count_features.items():
+        hitter_features[f'acuna_{feature_name}'] = feature_value
+    
+    # Calculate zone-specific swing rates from actual data
+    zone_heart_swings = swing_df[((swing_df['plate_x'].abs() <= 0.5) & (swing_df['plate_z'] >= 2.0) & (swing_df['plate_z'] <= 3.0))]
+    zone_corner_swings = swing_df[((swing_df['plate_x'].abs() >= 0.7) | (swing_df['plate_z'] >= 3.5) | (swing_df['plate_z'] <= 1.5))]
+    zone_shadow_swings = swing_df[((swing_df['plate_x'].abs() <= 1.0) & (swing_df['plate_z'] >= 1.2) & (swing_df['plate_z'] <= 3.8)) & ~((swing_df['plate_x'].abs() <= 0.7) & (swing_df['plate_z'] >= 1.5) & (swing_df['plate_z'] <= 3.5))]
+    
+    hitter_features['acuna_zone_heart_swing_rate'] = len(zone_heart_swings) / len(swing_df) if len(swing_df) > 0 else 0.0
+    hitter_features['acuna_zone_corner_swing_rate'] = len(zone_corner_swings) / len(swing_df) if len(swing_df) > 0 else 0.0
+    hitter_features['acuna_zone_shadow_swing_rate'] = len(zone_shadow_swings) / len(swing_df) if len(swing_df) > 0 else 0.0
+    
+    # Calculate location-specific swing rates
+    location_extreme_swings = swing_df[((swing_df['plate_x'].abs() > 1.2) | (swing_df['plate_z'] > 4.0) | (swing_df['plate_z'] < 1.0))]
+    location_heart_swings = swing_df[((swing_df['plate_x'].abs() <= 0.5) & (swing_df['plate_z'] >= 2.0) & (swing_df['plate_z'] <= 3.0))]
+    
+    hitter_features['acuna_location_extreme_swing_rate'] = len(location_extreme_swings) / len(swing_df) if len(swing_df) > 0 else 0.0
+    hitter_features['acuna_location_heart_swing_rate'] = len(location_heart_swings) / len(swing_df) if len(swing_df) > 0 else 0.0
+    
+    # Calculate situational swing rates
+    pressure_swings = swing_df[swing_df['strikes'] >= 2]
+    opportunity_swings = swing_df[swing_df['balls'] > swing_df['strikes']]
+    
+    hitter_features['acuna_pressure_swing_rate'] = len(pressure_swings) / len(swing_df) if len(swing_df) > 0 else 0.0
+    hitter_features['acuna_opportunity_swing_rate'] = len(opportunity_swings) / len(swing_df) if len(swing_df) > 0 else 0.0
+    
+    # Calculate velocity change swing rates (using velocity differences)
+    if 'release_speed' in swing_df.columns:
+        avg_velocity = swing_df['release_speed'].mean()
+        velocity_drop_swings = swing_df[swing_df['release_speed'] < (avg_velocity - 5)]
+        velocity_surge_swings = swing_df[swing_df['release_speed'] > (avg_velocity + 5)]
+        
+        hitter_features['acuna_velocity_drop_swing_rate'] = len(velocity_drop_swings) / len(swing_df) if len(swing_df) > 0 else 0.0
+        hitter_features['acuna_velocity_surge_swing_rate'] = len(velocity_surge_swings) / len(swing_df) if len(swing_df) > 0 else 0.0
+    else:
+        hitter_features['acuna_velocity_drop_swing_rate'] = 0.0
+        hitter_features['acuna_velocity_surge_swing_rate'] = 0.0
+    
+    # Calculate pitch type change swing rate (would need sequence data, using pitch type distribution for now)
+    if 'pitch_type' in swing_df.columns:
+        pitch_type_counts = swing_df['pitch_type'].value_counts()
+        most_common_pitch = pitch_type_counts.index[0] if len(pitch_type_counts) > 0 else 'FF'
+        non_most_common_swings = swing_df[swing_df['pitch_type'] != most_common_pitch]
+        hitter_features['acuna_pitch_type_change_swing_rate'] = len(non_most_common_swings) / len(swing_df) if len(swing_df) > 0 else 0.0
+    else:
+        hitter_features['acuna_pitch_type_change_swing_rate'] = 0.0
+    
+    # Calculate inning and game situation swing rates (if data available)
+    if 'inning' in swing_df.columns:
+        late_inning_swings = swing_df[swing_df['inning'] >= 7]
+        hitter_features['acuna_late_inning_swing_rate'] = len(late_inning_swings) / len(swing_df) if len(swing_df) > 0 else 0.0
+    else:
+        hitter_features['acuna_late_inning_swing_rate'] = 0.0
+    
+    if 'home_score' in swing_df.columns and 'away_score' in swing_df.columns:
+        close_game_swings = swing_df[abs(swing_df['home_score'] - swing_df['away_score']) <= 2]
+        hitter_features['acuna_close_game_swing_rate'] = len(close_game_swings) / len(swing_df) if len(swing_df) > 0 else 0.0
+    else:
+        hitter_features['acuna_close_game_swing_rate'] = 0.0
+    
+    print(f"Calculated {len(hitter_features)} hitter features")
+    return hitter_features
 
 def load_average_metrics():
     """
@@ -422,42 +596,95 @@ def prepare_pitch_features(pitch_data, averages):
     features['location_quadrant_encoded'] = ['up_left', 'up_right', 'down_left', 'down_right'].index(features['location_quadrant'])
     features['count_advantage_encoded'] = ['hitter_ahead', 'neutral', 'pitcher_ahead'].index(features['count_advantage'])
     
-    # Acuna-specific swing tendency features (high weight)
-    acuna_features = {
-        'acuna_fastball_swing_rate': 0.65,
-        'acuna_breaking_swing_rate': 0.45,
-        'acuna_offspeed_swing_rate': 0.55,
-        'acuna_zone_swing_rate': 0.75,
-        'acuna_outside_swing_rate': 0.35,
-        'acuna_high_swing_rate': 0.60,
-        'acuna_low_swing_rate': 0.50,
-        'acuna_ahead_swing_rate': 0.40,
-        'acuna_behind_swing_rate': 0.70,
-        'acuna_two_strikes_swing_rate': 0.80,
-        'acuna_full_count_swing_rate': 0.85,
-        'acuna_high_vel_swing_rate': 0.70,
-        'acuna_low_vel_swing_rate': 0.45,
-        'acuna_high_movement_swing_rate': 0.55,
-        'acuna_low_movement_swing_rate': 0.65,
-        'acuna_late_inning_swing_rate': 0.75,
-        'acuna_close_game_swing_rate': 0.70,
-        'acuna_first_pitch_swing_rate': 0.30,
-        'acuna_last_pitch_swing_rate': 0.85,
-        'acuna_pitch_type_change_swing_rate': 0.60,
-        'acuna_velocity_drop_swing_rate': 0.40,
-        'acuna_velocity_surge_swing_rate': 0.75,
-        'acuna_location_extreme_swing_rate': 0.25,
-        'acuna_location_heart_swing_rate': 0.85,
-        'acuna_pressure_swing_rate': 0.80,
-        'acuna_opportunity_swing_rate': 0.35,
-        'acuna_zone_corner_swing_rate': 0.45,
-        'acuna_zone_shadow_swing_rate': 0.55,
-        'acuna_zone_heart_swing_rate': 0.90
-    }
+    # Acuna-specific swing tendency features (will be calculated from career data)
+    # These will be filled in by the calling function
+    acuna_features = {}
     
-    # Add Acuna features
-    for feature_name, value in acuna_features.items():
-        features[feature_name] = value
+    # Dynamic advantage count features based on current count and pitch type
+    # These will be calculated from the career data and passed in as hitter_features
+    current_count = f"{features['balls']}-{features['strikes']}"
+    current_pitch_type = features['pitch_type']
+    
+    # Get comprehensive count features from career data (passed in as hitter_features)
+    if 'hitter_features' in locals():
+        # Extract count features from hitter_features (remove 'acuna_' prefix)
+        count_features = {k.replace('acuna_', ''): v for k, v in hitter_features.items() 
+                         if any(x in k for x in ['swing_rate', 'weighted_swing_rate'])}
+        
+        # Calculate current count features using the comprehensive function
+        current_count_features = get_count_features_for_pitch(
+            features['balls'], features['strikes'], current_pitch_type, count_features
+        )
+        
+        # Add current count features to the pitch features
+        for feature_name, feature_value in current_count_features.items():
+            features[feature_name] = feature_value
+    else:
+        # Default values if no career data available
+        features['current_count_overall_swing_rate'] = 0.5
+        features['current_count_pitch_swing_rate'] = 0.5
+        features['current_count_weighted_swing_rate'] = 0.25
+        features['current_count_pitch_weighted_swing_rate'] = 0.25
+        features['advantage_count_weight'] = 0.5
+    
+    # Add Acuna features (will be calculated from career data)
+    for feature_name in ['acuna_fastball_swing_rate', 'acuna_breaking_swing_rate', 'acuna_offspeed_swing_rate',
+                        'acuna_zone_swing_rate', 'acuna_outside_swing_rate', 'acuna_high_swing_rate', 'acuna_low_swing_rate',
+                        'acuna_ahead_swing_rate', 'acuna_behind_swing_rate', 'acuna_two_strikes_swing_rate', 'acuna_full_count_swing_rate',
+                        'acuna_high_vel_swing_rate', 'acuna_low_vel_swing_rate',
+                        'acuna_high_movement_swing_rate', 'acuna_low_movement_swing_rate',
+                        'acuna_late_inning_swing_rate', 'acuna_close_game_swing_rate',
+                        'acuna_first_pitch_swing_rate', 'acuna_last_pitch_swing_rate',
+                        'acuna_pitch_type_change_swing_rate', 'acuna_velocity_drop_swing_rate', 'acuna_velocity_surge_swing_rate',
+                        'acuna_location_extreme_swing_rate', 'acuna_location_heart_swing_rate',
+                        'acuna_pressure_swing_rate', 'acuna_opportunity_swing_rate',
+                        'acuna_zone_corner_swing_rate', 'acuna_zone_shadow_swing_rate', 'acuna_zone_heart_swing_rate']:
+        features[feature_name] = 0.0  # Placeholder, will be filled by career data
+    
+    # ADDING ALL MISSING FEATURES IDENTIFIED IN ANALYSIS
+    print("Adding missing features to align with model expectations...")
+    
+    # 1. Breaking ball high (already calculated above)
+    # 2. Close game (already calculated above)
+    # 3. Corner pitch (already calculated above)
+    
+    # 4-7. Count-specific rates (will be calculated from career data)
+    features['count_field_out_rate'] = 0.0
+    features['count_hit_rate'] = 0.0
+    features['count_swing_rate_adjustment'] = 0.0
+    features['count_whiff_rate'] = 0.0
+    
+    # 8-16. Early count features
+    features['early_count'] = int(features['count_total'] <= 2)
+    features['early_count_breaking_penalty'] = features['early_count'] * features['is_breaking_ball'] * 0.1
+    features['early_count_high_vel_penalty'] = features['early_count'] * features['high_velocity'] * 0.1
+    features['early_count_location_penalty'] = features['early_count'] * features['far_from_zone'] * 0.1
+    features['early_count_low_vel_penalty'] = features['early_count'] * features['low_velocity'] * 0.1
+    features['early_count_offspeed_penalty'] = features['early_count'] * features['is_offspeed'] * 0.1
+    features['early_count_outside_penalty'] = features['early_count'] * features['outside_pitch'] * 0.1
+    features['early_count_penalty'] = features['early_count'] * 0.1
+    features['early_count_zone_penalty'] = features['early_count'] * features['zone_distance'] * 0.1
+    
+    # 17. Extreme location (already calculated above)
+    # 18-19. First/last pitch (already calculated above)
+    # 20-22. Heart pitch and movement features (already calculated above)
+    # 23-24. Movement features (already calculated above)
+    # 25. Inning late (already calculated above)
+    # 26-27. Late count and low movement breaking (already calculated above)
+    # 28-29. Middle count and movement ratio (already calculated above)
+    # 30. Offspeed low (already calculated above)
+    # 31-32. Pitch in at bat and pitch type change (already calculated above)
+    
+    # 33-35. Pitch type rates
+    features['pitch_type_field_out_rate'] = 0.0
+    features['pitch_type_hit_rate'] = 0.0
+    features['pitch_type_whiff_rate'] = 0.0
+    
+    # 36-37. Plate location normalized movement (already calculated above)
+    # 38-41. Pressure features (already calculated above)
+    # 42-43. Shadow pitch and unexpected movement (already calculated above)
+    # 44. Velocity drop (already calculated above)
+    # 45-52. Zone-specific features (already calculated above)
     
     return features
 
@@ -471,18 +698,71 @@ def test_pitch_classifier(json_file_path):
     try:
         with open(json_file_path, 'r') as f:
             pitch_data = json.load(f)
-        print("✓ Loaded pitch JSON data")
     except Exception as e:
         print(f"✗ Error loading JSON file: {e}")
         return
     
+    # FIX ZONE 0.0 ISSUE - Validate zone data
+    if 'zone' in pitch_data and pitch_data['zone'] <= 0:
+        print(f"⚠️  Invalid zone detected: {pitch_data['zone']}")
+        
+        # Recalculate zone from plate coordinates
+        plate_x = pitch_data.get('plate_x', 0)
+        plate_z = pitch_data.get('plate_z', 2.5)
+        
+        if pd.isna(plate_x) or pd.isna(plate_z):
+            pitch_data['zone'] = 1  # Default to zone 1
+        elif abs(plate_x) <= 0.7 and 1.5 <= plate_z <= 3.5:
+            # In strike zone
+            if plate_x >= 0:
+                pitch_data['zone'] = 1 if plate_z >= 2.5 else 3
+            else:
+                pitch_data['zone'] = 2 if plate_z >= 2.5 else 4
+        else:
+            # Outside strike zone
+            if plate_x >= 0:
+                pitch_data['zone'] = 5 if plate_z >= 2.5 else 7
+            else:
+                pitch_data['zone'] = 6 if plate_z >= 2.5 else 8
+        
+        print(f"✅ Fixed zone to: {pitch_data['zone']}")
+    
+    # Load career data to calculate actual features
+    hitter_df, pitcher_df = load_career_data()
+    if hitter_df is None or pitcher_df is None:
+        print("✗ Could not load career data, using defaults")
+        hitter_features = {}
+    else:
+        # Calculate actual hitter features
+        hitter_features = calculate_hitter_features(hitter_df)
+    
     # Load average metrics
     averages = load_average_metrics()
-    print("✓ Loaded average metrics")
     
     # Prepare features for the pitch
     features = prepare_pitch_features(pitch_data, averages)
-    print("✓ Prepared features")
+    
+    # Update features with actual career data
+    if hitter_features:
+        for feature_name, value in hitter_features.items():
+            if feature_name in features:
+                features[feature_name] = value
+        
+        # Add comprehensive count features dynamically
+        current_count = f"{features['balls']}-{features['strikes']}"
+        current_pitch_type = features['pitch_type']
+        
+        # Extract count features from hitter_features (remove 'acuna_' prefix)
+        count_features = {k.replace('acuna_', ''): v for k, v in hitter_features.items() 
+                         if any(x in k for x in ['swing_rate', 'weighted_swing_rate'])}
+        
+        # Calculate current count features using the comprehensive function
+        current_count_features = get_count_features_for_pitch(
+            features['balls'], features['strikes'], current_pitch_type, count_features
+        )
+        
+        for feature_name, feature_value in current_count_features.items():
+            features[feature_name] = feature_value
     
     # Load the trained model
     try:
@@ -495,7 +775,6 @@ def test_pitch_classifier(json_file_path):
             print("✗ Swing classifier not found in model file")
             return
         
-        print("✓ Loaded swing classifier")
     except Exception as e:
         print(f"✗ Error loading model: {e}")
         return
@@ -646,10 +925,6 @@ def main():
         print(f"No JSON files found in {pitches_dir} folder")
         print("Please add pitch JSON files to the Pitches folder.")
         return
-    
-    print(f"Found {len(json_files)} JSON file(s) in Pitches folder:")
-    for i, file in enumerate(json_files, 1):
-        print(f"  {i}. {file}")
     
     # Test each JSON file
     for json_file in json_files:

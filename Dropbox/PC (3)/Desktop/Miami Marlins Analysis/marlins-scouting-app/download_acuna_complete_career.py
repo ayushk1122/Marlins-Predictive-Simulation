@@ -11,10 +11,10 @@ def download_acuna_complete_career():
     print("🔍 Downloading Ronald Acuña Jr.'s complete career data...")
     
     # Ronald Acuña Jr.'s MLBAM ID (from previous searches)
-    acuna_id = 660271
+    acuna_id = 645261
     
     # Get his career data from 2018 to present
-    start_year = 2018
+    start_year = 2019
     end_year = datetime.now().year
     
     all_data = []
@@ -24,7 +24,7 @@ def download_acuna_complete_career():
         
         try:
             # Download Statcast data for Acuña for this year
-            year_data = pb.statcast_batter(
+            year_data = pb.statcast_pitcher(
                 f"{year}-01-01", 
                 f"{year}-12-31", 
                 acuna_id
@@ -78,7 +78,7 @@ def download_acuna_complete_career():
         print(f"📅 Date range: {filtered_career['game_date'].min()} to {filtered_career['game_date'].max()}")
         
         # Save the complete dataset with only desired columns
-        filename = 'ronald_acuna_jr_complete_career_statcast.csv'
+        filename = 'sandy_alcantara_complete_career_statcast.csv'
         filtered_career.to_csv(filename, index=False)
         print(f"💾 Complete career data saved to: {filename}")
         
@@ -116,6 +116,6 @@ if __name__ == "__main__":
     
     if data is not None:
         print("\n✅ Download complete!")
-        print("📁 File saved as: ronald_acuna_jr_complete_career_statcast.csv")
+        print("📁 File saved as: sandy_alcantara_complete_career_statcast.csv")
     else:
         print("❌ Download failed") 
