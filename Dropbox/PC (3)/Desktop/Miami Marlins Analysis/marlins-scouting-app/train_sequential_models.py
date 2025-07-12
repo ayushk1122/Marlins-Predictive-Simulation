@@ -70,8 +70,65 @@ def prepare_features(df):
         (df['plate_z'] - df['zone_center_z'])**2
     )
     
-    # 2. Movement Magnitude: Total movement as sqrt(pfx_x² + pfx_z²)
-    df['movement_magnitude'] = np.sqrt(df['pfx_x']**2 + df['pfx_z']**2)
+    # 2. IMPROVED Movement Quantification: Better calculation using multiple Statcast fields
+    # Replace simplistic movement_magnitude with more sophisticated movement analysis
+    
+    # Primary movement metrics using Statcast's calculated break values
+    df['horizontal_break'] = df['api_break_x_batter_in'].fillna(0)  # From batter's perspective
+    df['vertical_break'] = df['api_break_z_with_gravity'].fillna(0)  # With gravity accounted for
+    df['arm_side_break'] = df['api_break_x_arm'].fillna(0)  # From pitcher's arm side
+    
+    # Calculate total movement magnitude using the more accurate break values
+    df['movement_magnitude'] = np.sqrt(df['horizontal_break']**2 + df['vertical_break']**2)
+    
+    # Movement direction and characteristics
+    df['movement_direction'] = np.arctan2(df['vertical_break'], df['horizontal_break']) * 180 / np.pi
+    df['movement_ratio'] = np.abs(df['horizontal_break']) / (np.abs(df['vertical_break']) + 0.1)
+    
+    # Spin-based movement analysis
+    if 'spin_axis' in df.columns:
+        df['spin_axis_rad'] = df['spin_axis'].fillna(0) * np.pi / 180  # Convert to radians
+        df['spin_efficiency'] = df['release_spin_rate'] / (df['release_speed'] + 0.1)  # Spin per mph
+    else:
+        df['spin_axis_rad'] = 0
+        df['spin_efficiency'] = 0
+    
+    # Velocity-movement relationship
+    df['velocity_movement_ratio'] = df['release_speed'] / (df['movement_magnitude'] + 0.1)
+    df['movement_per_mph'] = df['movement_magnitude'] / (df['release_speed'] + 0.1)
+    
+    # Pitch type specific movement expectations
+    df['expected_movement'] = np.where(
+        df['pitch_type'].isin(['SL', 'CU', 'KC']),  # Breaking balls
+        df['movement_magnitude'] * 1.2,  # Expect more movement
+        np.where(
+            df['pitch_type'].isin(['CH', 'FS']),  # Offspeed
+            df['movement_magnitude'] * 1.1,  # Moderate movement
+            df['movement_magnitude'] * 0.8  # Fastballs - less movement expected
+        )
+    )
+    
+    # Movement deception (unexpected movement for pitch type)
+    df['movement_deception'] = df['movement_magnitude'] - df['expected_movement']
+    
+    # High movement thresholds based on pitch type
+    df['high_movement'] = np.where(
+        df['pitch_type'].isin(['SL', 'CU', 'KC']),
+        df['movement_magnitude'] > 8,  # Breaking balls
+        np.where(
+            df['pitch_type'].isin(['CH', 'FS']),
+            df['movement_magnitude'] > 6,  # Offspeed
+            df['movement_magnitude'] > 4   # Fastballs
+        )
+    ).astype(int)
+    
+    # Movement consistency (if we have multiple pitches from same pitcher)
+    if 'pitcher' in df.columns:
+        df['movement_std'] = df.groupby('pitcher')['movement_magnitude'].transform('std')
+        df['movement_diff_from_avg'] = df['movement_magnitude'] - df.groupby('pitcher')['movement_magnitude'].transform('mean')
+    else:
+        df['movement_std'] = df['movement_magnitude'].std()
+        df['movement_diff_from_avg'] = 0
     
     # 3. Location x Movement: Interaction between normalized location and movement
     # Normalize plate_x by strike zone width (approximately 17 inches = 1.417 feet)
@@ -93,6 +150,15 @@ def prepare_features(df):
     df['two_strikes'] = (df['strikes'] >= 2).astype(int)
     df['three_balls'] = (df['balls'] >= 3).astype(int)
     
+    # NEW: Basic count-based features (no dependencies)
+    df['early_count'] = ((df['balls'] <= 1) & (df['strikes'] <= 1)).astype(int)
+    df['middle_count'] = ((df['balls'] == 1) & (df['strikes'] == 1)).astype(int)
+    df['late_count'] = ((df['balls'] >= 2) | (df['strikes'] >= 2)).astype(int)
+    df['pressure_count'] = ((df['strikes'] >= 2) | (df['balls'] >= 3)).astype(int)
+    
+    # Basic early count penalty (no dependencies)
+    df['early_count_penalty'] = df['early_count'] * 0.3  # 30% penalty for early count swings
+    
     # 5. Zone-specific features for no-swing prediction
     df['in_strike_zone'] = ((df['plate_x'] >= -0.85) & (df['plate_x'] <= 0.85) & 
                            (df['plate_z'] >= df['sz_bot']) & (df['plate_z'] <= df['sz_top'])).astype(int)
@@ -107,6 +173,36 @@ def prepare_features(df):
     df['is_breaking_ball'] = df['pitch_type'].isin(['SL', 'CU', 'KC']).astype(int)
     df['is_offspeed'] = df['pitch_type'].isin(['CH', 'FS']).astype(int)
     
+    # 6.5. Count-based features with dependencies (after zone and pitch type features are created)
+    df['early_count_zone_penalty'] = df['early_count'] * df['in_strike_zone'] * 0.2  # Additional penalty for zone pitches in early counts
+    df['early_count_outside_penalty'] = df['early_count'] * (~df['in_strike_zone']).astype(int) * 0.5  # 50% penalty for outside pitches in early counts
+    
+    # Count-specific swing rate adjustments
+    df['count_swing_rate_adjustment'] = np.where(
+        df['early_count'] == 1, -0.25,  # Reduce swing probability by 25% in early counts
+        np.where(
+            df['pressure_count'] == 1, 0.15,  # Increase swing probability by 15% in pressure situations
+            0.0  # No adjustment for middle counts
+        )
+    )
+    
+    # Count-specific location penalties
+    df['early_count_location_penalty'] = np.where(
+        df['early_count'] == 1,
+        np.where(
+            df['zone_distance'] > 0.5, 0.4,  # 40% penalty for pitches >0.5 feet from zone in early counts
+            np.where(
+                df['zone_distance'] > 0.2, 0.2,  # 20% penalty for pitches >0.2 feet from zone in early counts
+                0.0  # No penalty for very close pitches
+            )
+        ),
+        0.0  # No penalty for non-early counts
+    )
+    
+    # Count-specific pitch type penalties
+    df['early_count_breaking_penalty'] = df['early_count'] * df['is_breaking_ball'] * 0.3  # 30% penalty for breaking balls in early counts
+    df['early_count_offspeed_penalty'] = df['early_count'] * df['is_offspeed'] * 0.25  # 25% penalty for offspeed in early counts
+    
     # 7. Advanced interaction features
     df['zone_distance_x_count_pressure'] = df['zone_distance'] * df['count_pressure']
     df['movement_x_count_pressure'] = df['movement_magnitude'] * df['count_pressure']
@@ -120,6 +216,10 @@ def prepare_features(df):
     df['high_velocity'] = (df['release_speed'] > 95).astype(int)
     df['low_velocity'] = (df['release_speed'] < 85).astype(int)
     df['high_movement'] = (df['movement_magnitude'] > 10).astype(int)
+    
+    # 8.5. Count-specific velocity penalties (after velocity features are created)
+    df['early_count_low_vel_penalty'] = df['early_count'] * df['low_velocity'] * 0.35  # 35% penalty for low velocity in early counts
+    df['early_count_high_vel_penalty'] = df['early_count'] * df['high_velocity'] * 0.15  # 15% penalty for high velocity in early counts
     
     # 9. Zone edge features
     df['zone_edge_distance'] = np.minimum(
@@ -185,12 +285,12 @@ def prepare_features(df):
         df['velocity_std'] = df['release_speed'].std()
         df['velocity_diff_from_avg'] = 0
     
-    # 16. Movement deception features
-    df['horizontal_movement'] = df['pfx_x']
-    df['vertical_movement'] = df['pfx_z']
-    df['movement_ratio'] = np.abs(df['horizontal_movement']) / (np.abs(df['vertical_movement']) + 0.1)
-    df['high_horizontal_movement'] = (np.abs(df['horizontal_movement']) > 5).astype(int)
-    df['high_vertical_movement'] = (np.abs(df['vertical_movement']) > 5).astype(int)
+    # 16. Movement deception features (using improved break values)
+    df['horizontal_movement'] = df['horizontal_break']  # Use the better break values
+    df['vertical_movement'] = df['vertical_break']  # Use the better break values
+    # movement_ratio already calculated above with better values
+    df['high_horizontal_movement'] = (np.abs(df['horizontal_break']) > 5).astype(int)
+    df['high_vertical_movement'] = (np.abs(df['vertical_break']) > 5).astype(int)
     
     # 17. Zone precision features
     df['zone_center_distance'] = np.sqrt(df['plate_x']**2 + (df['plate_z'] - (df['sz_top'] + df['sz_bot'])/2)**2)
@@ -377,6 +477,12 @@ def prepare_features(df):
         'velocity_x_location', 'pitch_type_x_location', 'count_x_zone',
         'early_count_swing', 'late_count_take', 'pressure_swing', 'opportunity_take',
         'zone_quadrant_encoded', 'location_quadrant_encoded', 'count_advantage_encoded',
+        # NEW COUNT-BASED FEATURE WEIGHTING (HIGH PRIORITY)
+        'early_count', 'middle_count', 'late_count', 'pressure_count',
+        'early_count_penalty', 'early_count_zone_penalty', 'early_count_outside_penalty',
+        'count_swing_rate_adjustment', 'early_count_location_penalty',
+        'early_count_breaking_penalty', 'early_count_offspeed_penalty',
+        'early_count_low_vel_penalty', 'early_count_high_vel_penalty',
         # HITTER-SPECIFIC SWING TENDENCY FEATURES (HIGH WEIGHT)
         'acuna_fastball_swing_rate', 'acuna_breaking_swing_rate', 'acuna_offspeed_swing_rate',
         'acuna_zone_swing_rate', 'acuna_outside_swing_rate', 'acuna_high_swing_rate', 'acuna_low_swing_rate',
@@ -849,6 +955,23 @@ def create_swing_classifier(df):
     
     # Train model with sample weights
     ensemble_model.fit(X_train, y_train)
+    
+    # IMPLEMENT COUNT-SPECIFIC THRESHOLDS TO REDUCE EARLY COUNT FALSE POSITIVES
+    print("\n=== IMPLEMENTING COUNT-SPECIFIC THRESHOLDS ===")
+    
+    # Create count-specific thresholds based on analysis
+    # Early counts: Higher threshold (more conservative) to reduce false positives
+    # Pressure counts: Lower threshold (more aggressive) to catch necessary swings
+    count_thresholds = {
+        'early_count': 0.95,    # Very high threshold for early counts (≤1 ball, ≤1 strike)
+        'middle_count': 0.85,   # High threshold for middle counts (1-1)
+        'pressure_count': 0.75,  # Lower threshold for pressure situations (≥2 strikes or ≥3 balls)
+        'default': 0.9          # Default threshold for other situations
+    }
+    
+    print("Count-specific thresholds:")
+    for count_type, threshold in count_thresholds.items():
+        print(f"  {count_type}: {threshold}")
     
     # IMPLEMENT PROBABILITY CALIBRATION
     print("\n=== IMPLEMENTING PROBABILITY CALIBRATION ===")

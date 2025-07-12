@@ -129,8 +129,26 @@ X_swing = np.nan_to_num(X_swing, nan=0.0)
 swing_probs = swing_calibrated_model.predict_proba(X_swing)
 swing_prob_scores = swing_probs[:, 1]  # Probability of swing
 
-# Use the saved threshold for predictions
-swing_preds = (swing_prob_scores >= swing_threshold).astype(int)
+# Get calibrated probabilities and apply count-specific thresholds
+swing_preds = []
+for i, (prob, row) in enumerate(zip(swing_prob_scores, holdout_df.iterrows())):
+    balls = row[1].get('balls', 0)
+    strikes = row[1].get('strikes', 0)
+    
+    # Determine count situation and threshold
+    if balls <= 1 and strikes <= 1:
+        threshold = 0.95 # Very high threshold for early counts (≤1 ball, ≤1 strike)
+    elif balls == 1 and strikes == 1:
+        threshold = 0.85 # High threshold for middle counts (1-1)
+    elif strikes >= 2 or balls >= 3:
+        threshold = 0.75 # Lower threshold for pressure situations (≥2 strikes or ≥3 balls)
+    else:
+        threshold = 0.9 # Default threshold for other situations
+    
+    # Make prediction with count-specific threshold
+    swing_preds.append(1 if prob >= threshold else 0)
+
+swing_preds = np.array(swing_preds)
 
 # Get true labels
 true_swings = holdout_df['swing'].values
@@ -297,15 +315,29 @@ if fp_indices:
     
     # Movement analysis
     print(f"\n--- FALSE POSITIVE MOVEMENT ANALYSIS ---")
-    if 'pfx_x' in fp_df.columns and 'pfx_z' in fp_df.columns:
-        # Calculate movement magnitude
-        fp_df['movement_magnitude'] = np.sqrt(fp_df['pfx_x']**2 + fp_df['pfx_z']**2)
-        print("Movement magnitude statistics:")
-        print(fp_df['movement_magnitude'].describe())
+    if 'api_break_x_batter_in' in fp_df.columns and 'api_break_z_with_gravity' in fp_df.columns:
+        # IMPROVED Movement Quantification using Statcast break values
+        fp_df['horizontal_break'] = fp_df['api_break_x_batter_in'].fillna(0)
+        fp_df['vertical_break'] = fp_df['api_break_z_with_gravity'].fillna(0)
+        fp_df['arm_side_break'] = fp_df['api_break_x_arm'].fillna(0)
         
-        # Check for high movement pitches
-        high_movement = fp_df[fp_df['movement_magnitude'] > 10]
-        print(f"  High movement (>10): {len(high_movement)} ({len(high_movement)/len(fp_df)*100:.1f}%)")
+        # Calculate total movement magnitude using the more accurate break values
+        fp_df['movement_magnitude'] = np.sqrt(fp_df['horizontal_break']**2 + fp_df['vertical_break']**2)
+    else:
+        # Fallback to old method if new fields not available
+        fp_df['movement_magnitude'] = np.sqrt(fp_df['pfx_x']**2 + fp_df['pfx_z']**2)
+    
+    print("Movement magnitude statistics:")
+    print(fp_df['movement_magnitude'].describe())
+    
+    # Check for high movement pitches
+    # Improved high movement detection based on pitch type
+    high_movement = fp_df[
+        ((fp_df['pitch_type'].isin(['SL', 'CU', 'KC'])) & (fp_df['movement_magnitude'] > 8)) |  # Breaking balls
+        ((fp_df['pitch_type'].isin(['CH', 'FS'])) & (fp_df['movement_magnitude'] > 6)) |  # Offspeed
+        ((~fp_df['pitch_type'].isin(['SL', 'CU', 'KC', 'CH', 'FS'])) & (fp_df['movement_magnitude'] > 4))  # Fastballs
+    ]
+    print(f"  High movement (pitch-type adjusted): {len(high_movement)} ({len(high_movement)/len(fp_df)*100:.1f}%)")
     
     # Game situation analysis
     print(f"\n--- FALSE POSITIVE GAME SITUATION ANALYSIS ---")
