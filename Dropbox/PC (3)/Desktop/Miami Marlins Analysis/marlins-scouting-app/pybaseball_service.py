@@ -59,6 +59,8 @@ def simulate_pitch():
         plate_x = data.get('plate_x')
         plate_z = data.get('plate_z')
         zone = data.get('zone')
+        balls = data.get('balls', 0)
+        strikes = data.get('strikes', 0)
         handedness = data.get('handedness', 'R')
         
         print(f"Received pitch simulation request:")
@@ -68,6 +70,7 @@ def simulate_pitch():
         print(f"  Plate X: {plate_x}")
         print(f"  Plate Z: {plate_z}")
         print(f"  Zone: {zone}")
+        print(f"  Balls: {balls}, Strikes: {strikes}")
         print(f"  Handedness: {handedness}")
         
         # Simple mock response for now
@@ -104,13 +107,15 @@ def simulate_pitch():
             'plate_x': plate_x,
             'plate_z': plate_z,
             'zone': zone,
+            'balls': balls,
+            'strikes': strikes,
             'handedness': handedness,
             'in_strike_zone': in_strike_zone,
             'outcome': outcome,
             'confidence': confidence,
             'swing_probability': random.uniform(0.3, 0.7),
             'timestamp': datetime.now().isoformat(),
-            'details': f"Pitch at ({plate_x:.2f}, {plate_z:.2f}) - {pitch_type} pitch"
+            'details': f"Pitch at ({plate_x:.2f}, {plate_z:.2f}) - {pitch_type} pitch - Count: {balls}-{strikes}"
         }
         
         # Save pitch data to JSON file

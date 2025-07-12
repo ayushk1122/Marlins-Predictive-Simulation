@@ -211,43 +211,7 @@ def prepare_pitch_features(pitch_data, averages):
     features['two_strikes'] = int(features['strikes'] >= 2)
     features['three_balls'] = int(features['balls'] >= 3)
     
-    # NEW: Count-based feature weighting to reduce early count false positives
-    features['early_count'] = int((features['balls'] <= 1) and (features['strikes'] <= 1))
-    features['middle_count'] = int((features['balls'] == 1) and (features['strikes'] == 1))
-    features['late_count'] = int((features['balls'] >= 2) or (features['strikes'] >= 2))
-    features['pressure_count'] = int((features['strikes'] >= 2) or (features['balls'] >= 3))
-    
-    # Early count penalty features (reduce swing probability in early counts)
-    features['early_count_penalty'] = features['early_count'] * 0.3  # 30% penalty for early count swings
-    features['early_count_zone_penalty'] = features['early_count'] * features['in_strike_zone'] * 0.2  # Additional penalty for zone pitches in early counts
-    features['early_count_outside_penalty'] = features['early_count'] * (not features['in_strike_zone']) * 0.5  # 50% penalty for outside pitches in early counts
-    
-    # Count-specific swing rate adjustments
-    if features['early_count'] == 1:
-        features['count_swing_rate_adjustment'] = -0.25  # Reduce swing probability by 25% in early counts
-    elif features['pressure_count'] == 1:
-        features['count_swing_rate_adjustment'] = 0.15  # Increase swing probability by 15% in pressure situations
-    else:
-        features['count_swing_rate_adjustment'] = 0.0  # No adjustment for middle counts
-    
-    # Count-specific location penalties
-    if features['early_count'] == 1:
-        if features['zone_distance'] > 0.5:
-            features['early_count_location_penalty'] = 0.4  # 40% penalty for pitches >0.5 feet from zone in early counts
-        elif features['zone_distance'] > 0.2:
-            features['early_count_location_penalty'] = 0.2  # 20% penalty for pitches >0.2 feet from zone in early counts
-        else:
-            features['early_count_location_penalty'] = 0.0  # No penalty for very close pitches
-    else:
-        features['early_count_location_penalty'] = 0.0  # No penalty for non-early counts
-    
-    # Count-specific pitch type penalties
-    features['early_count_breaking_penalty'] = features['early_count'] * features['is_breaking_ball'] * 0.3  # 30% penalty for breaking balls in early counts
-    features['early_count_offspeed_penalty'] = features['early_count'] * features['is_offspeed'] * 0.25  # 25% penalty for offspeed in early counts
-    
-    # Count-specific velocity penalties
-    features['early_count_low_vel_penalty'] = features['early_count'] * features['low_velocity'] * 0.35  # 35% penalty for low velocity in early counts
-    features['early_count_high_vel_penalty'] = features['early_count'] * features['high_velocity'] * 0.15  # 15% penalty for high velocity in early counts
+
     
     # Zone-specific features
     features['in_strike_zone'] = int(
@@ -265,6 +229,10 @@ def prepare_pitch_features(pitch_data, averages):
     features['is_breaking_ball'] = int(pitch_type in ['SL', 'CU', 'KC'])
     features['is_offspeed'] = int(pitch_type in ['CH', 'FS'])
     
+
+    
+
+    
     # Interaction features
     features['zone_distance_x_count_pressure'] = features['zone_distance'] * features['count_pressure']
     features['movement_x_count_pressure'] = features['movement_magnitude'] * features['count_pressure']
@@ -275,6 +243,9 @@ def prepare_pitch_features(pitch_data, averages):
     features['velocity_movement_ratio'] = features['release_speed'] / (features['movement_magnitude'] + 0.1)
     features['high_velocity'] = int(features['release_speed'] > 95)
     features['low_velocity'] = int(features['release_speed'] < 85)
+    
+
+    
     # Improved high movement detection based on pitch type
     if features['pitch_type'] in ['SL', 'CU', 'KC']:  # Breaking balls
         features['high_movement'] = int(features['movement_magnitude'] > 8)
@@ -593,8 +564,17 @@ def test_pitch_classifier(json_file_path):
         # Get the preprocessor from the model
         preprocessor = models['swing_preprocessor']
         
-        # Transform the features
-        X = preprocessor.transform(df[all_feats])
+        # Filter features to only include what the preprocessor expects
+        available_feats = [f for f in preprocessor.feature_names_in_ if f in df.columns]
+        missing_feats = [f for f in preprocessor.feature_names_in_ if f not in df.columns]
+        
+        if missing_feats:
+            # Add default values for missing features
+            for feat in missing_feats:
+                df[feat] = 0.0
+        
+        # Transform the features using only what the preprocessor expects
+        X = preprocessor.transform(df[preprocessor.feature_names_in_])
         
         # Clean NaN values
         X = np.nan_to_num(X, nan=0.0)
@@ -636,31 +616,10 @@ def test_pitch_classifier(json_file_path):
         swing_prediction = 1 if swing_probability >= threshold else 0
         
         # Print results
-        print("\n" + "="*50)
-        print("SWING CLASSIFIER PREDICTION")
-        print("="*50)
-        print(f"Pitcher: {pitch_data.get('pitcher', 'Unknown')}")
-        print(f"Hitter: {pitch_data.get('hitter', 'Unknown')}")
-        print(f"Pitch Type: {pitch_data.get('pitch_type', 'Unknown')}")
-        print(f"Location: ({pitch_data.get('plate_x', 0):.3f}, {pitch_data.get('plate_z', 0):.3f})")
-        print(f"Zone: {pitch_data.get('zone', 'Unknown')}")
-        print(f"Count: {features['balls']}-{features['strikes']}")
-        print(f"Velocity: {features['release_speed']:.1f} mph")
-        print(f"Movement: {features['movement_magnitude']:.2f}")
-        print(f"In Strike Zone: {'Yes' if features['in_strike_zone'] else 'No'}")
-        print("-" * 50)
-        print(f"PREDICTION: {'SWING' if swing_prediction else 'NO SWING'}")
-        print(f"CONFIDENCE: {swing_probability:.3f} ({swing_probability*100:.1f}%)")
-        print(f"THRESHOLD: {threshold:.3f} (80% confidence)")
-        print("-" * 50)
-        print("THRESHOLD ANALYSIS:")
-        print(f"  At 50% threshold: {'SWING' if swing_probability >= 0.5 else 'NO SWING'}")
-        print(f"  At 60% threshold: {'SWING' if swing_probability >= 0.6 else 'NO SWING'}")
-        print(f"  At 70% threshold: {'SWING' if swing_probability >= 0.7 else 'NO SWING'}")
-        print(f"  At 75% threshold: {'SWING' if swing_probability >= 0.75 else 'NO SWING'}")
-        print(f"  At 80% threshold: {'SWING' if swing_probability >= 0.8 else 'NO SWING'}")
-        print(f"  At 90% threshold: {'SWING' if swing_probability >= 0.9 else 'NO SWING'} ← CURRENT (OPTIMAL)")
-        print("="*50)
+        print(f"\n{pitch_data.get('pitcher', 'Unknown')} vs {pitch_data.get('hitter', 'Unknown')}")
+        print(f"{pitch_data.get('pitch_type', 'Unknown')} pitch at ({pitch_data.get('plate_x', 0):.2f}, {pitch_data.get('plate_z', 0):.2f}) - Zone {pitch_data.get('zone', 'Unknown')}")
+        print(f"Count: {features['balls']:.0f}-{features['strikes']:.0f} | Velocity: {features['release_speed']:.0f} mph | Movement: {features['movement_magnitude']:.1f}")
+        print(f"PREDICTION: {'SWING' if swing_prediction else 'NO SWING'} | Confidence: {swing_probability:.1%} | Threshold: {threshold:.1%} ({count_situation})")
         
         return swing_prediction, swing_probability
         

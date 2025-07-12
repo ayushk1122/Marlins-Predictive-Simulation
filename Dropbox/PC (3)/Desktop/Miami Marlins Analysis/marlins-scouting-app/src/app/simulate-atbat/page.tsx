@@ -193,6 +193,8 @@ export default function SimulateAtBatPage() {
     const [pitchError, setPitchError] = useState<string | null>(null);
     const [simulating, setSimulating] = useState(false);
     const [simulationResult, setSimulationResult] = useState<any>(null);
+    const [balls, setBalls] = useState<number>(0);
+    const [strikes, setStrikes] = useState<number>(0);
 
     // Fetch pitch types for selected pitcher
     React.useEffect(() => {
@@ -319,6 +321,8 @@ export default function SimulateAtBatPage() {
                 plate_x: coords.plate_x,
                 plate_z: coords.plate_z,
                 zone, // add zone to payload
+                balls,
+                strikes,
                 handedness: DEMO_HANDEDNESS[hitter] || "R"
             });
 
@@ -368,6 +372,22 @@ export default function SimulateAtBatPage() {
                             ))}
                         </select>
                         {pitchError && <div className="text-red-600 text-xs mt-1">{pitchError}</div>}
+                    </div>
+                    <div className="min-w-[200px]">
+                        <label className="block font-semibold mb-2">Ball Count</label>
+                        <select className="w-full border rounded px-3 py-2" value={balls} onChange={e => setBalls(parseInt(e.target.value))}>
+                            {[0, 1, 2, 3].map(b => (
+                                <option key={b} value={b}>{b}</option>
+                            ))}
+                        </select>
+                    </div>
+                    <div className="min-w-[200px]">
+                        <label className="block font-semibold mb-2">Strike Count</label>
+                        <select className="w-full border rounded px-3 py-2" value={strikes} onChange={e => setStrikes(parseInt(e.target.value))}>
+                            {[0, 1, 2].map(s => (
+                                <option key={s} value={s}>{s}</option>
+                            ))}
+                        </select>
                     </div>
                 </div>
                 <div className="flex flex-col items-center mt-6">
