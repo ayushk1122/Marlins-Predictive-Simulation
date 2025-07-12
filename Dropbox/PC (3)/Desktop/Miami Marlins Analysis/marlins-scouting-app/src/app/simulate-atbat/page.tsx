@@ -99,6 +99,28 @@ function StrikeZoneDisplay({ marker, onSelect, markerColor }: {
     const strikeZoneTopY = plateY - strikeZoneBottomOffset - strikeZoneHeight;
     const extendedZoneTopY = plateY - fullZoneHeight;
 
+    // Outer strike zone (Statcast): plate_x from -1.5 to 1.5, plate_z from 1.0 to 4.0, centered at the same vertical center as the inner strike zone
+    // Outer Strike Zone centered around inner zone
+    const outerZoneWidthPx = scale * 3.0;
+    const outerZoneHeightPx = scale * 3.0;
+    const innerZoneCenterY = strikeZoneTopY + strikeZoneHeight / 2;
+
+    const outerZoneLeftX = xCenter - outerZoneWidthPx / 2;
+    const outerZoneTopY = innerZoneCenterY - outerZoneHeightPx / 2;
+
+    const outerZoneWidth = outerZoneWidthPx;
+    const outerZoneHeight = outerZoneHeightPx;
+
+    // Convert pixel coordinates to Statcast coordinates
+    const convertToStatcastCoords = (pixelX: number, pixelY: number) => {
+        // Convert from pixel coordinates to Statcast coordinates
+        // Inner strike zone: plate_x ranges from -0.7 to 0.7, plate_z from 1.5 to 3.5
+        const plateX = ((pixelX - xCenter) / (fullZoneWidth / 2)) * 0.7;
+        const plateZ = ((plateY - pixelY - strikeZoneBottomOffset) / strikeZoneHeight) * (3.5 - 1.5) + 1.5;
+
+        return { plate_x: plateX, plate_z: plateZ };
+    };
+
     return (
         <svg width={svgWidth} height={svgHeight} style={{ background: "white" }}
             onClick={e => {
@@ -107,21 +129,21 @@ function StrikeZoneDisplay({ marker, onSelect, markerColor }: {
                 const y = e.clientY - rect.top;
                 // Allow clicks anywhere in the extended zone
                 if (
-                    x >= xCenter - fullZoneWidth / 2 &&
-                    x <= xCenter + fullZoneWidth / 2 &&
-                    y >= extendedZoneTopY &&
-                    y <= extendedZoneTopY + fullZoneHeight
+                    x >= outerZoneLeftX &&
+                    x <= outerZoneLeftX + outerZoneWidth &&
+                    y >= outerZoneTopY &&
+                    y <= outerZoneTopY + outerZoneHeight
                 ) {
                     onSelect(x, y);
                 }
             }}
         >
-            {/* Extended Strike Zone (outer chalk lines) */}
+            {/* Outer Strike Zone (Statcast) */}
             <rect
-                x={xCenter - fullZoneWidth / 2}
-                y={extendedZoneTopY}
-                width={fullZoneWidth}
-                height={fullZoneHeight}
+                x={outerZoneLeftX}
+                y={outerZoneTopY}
+                width={outerZoneWidth}
+                height={outerZoneHeight}
                 stroke="#cccccc"
                 strokeWidth={2}
                 fill="none"
@@ -169,6 +191,8 @@ export default function SimulateAtBatPage() {
     const [pitchTypes, setPitchTypes] = useState<string[]>([]);
     const [loadingPitches, setLoadingPitches] = useState(false);
     const [pitchError, setPitchError] = useState<string | null>(null);
+    const [simulating, setSimulating] = useState(false);
+    const [simulationResult, setSimulationResult] = useState<any>(null);
 
     // Fetch pitch types for selected pitcher
     React.useEffect(() => {
@@ -194,6 +218,118 @@ export default function SimulateAtBatPage() {
             })
             .finally(() => setLoadingPitches(false));
     }, [pitcher]);
+
+    // Convert pixel coordinates to Statcast coordinates
+    const convertToStatcastCoords = (pixelX: number, pixelY: number) => {
+        const scale = 100;
+        const plateWidthFt = 1.417;
+        const strikeZoneTopFt = 3.25;
+        const strikeZoneBottomFt = 1.64;
+        const fullZoneHeightFt = 6.25;
+        const extendedZoneWidthFt = 2.417;
+
+        const plateWidth = plateWidthFt * scale;
+        const strikeZoneHeight = (strikeZoneTopFt - strikeZoneBottomFt) * scale;
+        const strikeZoneBottomOffset = strikeZoneBottomFt * scale;
+        const fullZoneHeight = fullZoneHeightFt * scale;
+        const fullZoneWidth = extendedZoneWidthFt * scale;
+
+        const svgWidth = 700;
+        const svgHeight = 800;
+        const xCenter = svgWidth / 2;
+        const plateY = 700;
+        const strikeZoneTopY = plateY - strikeZoneBottomOffset - strikeZoneHeight;
+
+        // Find pixel boundaries of the inner strike zone
+        const left_px = xCenter - plateWidth / 2;
+        const right_px = xCenter + plateWidth / 2;
+        // Map left edge to -0.71, right edge to 0.71
+        const plateX = ((pixelX - left_px) / (right_px - left_px)) * 1.42 - 0.71;
+        // plate_z scaling remains the same
+        const plateZ = ((plateY - pixelY - strikeZoneBottomOffset) / strikeZoneHeight) * (3.5 - 1.5) + 1.5;
+        return { plate_x: plateX, plate_z: plateZ };
+    };
+
+    // Helper: Point-in-polygon (ray-casting algorithm)
+    function pointInPolygon(x: number, y: number, polygon: [number, number][]) {
+        let inside = false;
+        for (let i = 0, j = polygon.length - 1; i < polygon.length; j = i++) {
+            const xi = polygon[i][0], yi = polygon[i][1];
+            const xj = polygon[j][0], yj = polygon[j][1];
+            const intersect = ((yi > y) !== (yj > y)) &&
+                (x < (xj - xi) * (y - yi) / (yj - yi + 1e-12) + xi);
+            if (intersect) inside = !inside;
+        }
+        return inside;
+    }
+
+    // Zone polygons for 11,12,13,14
+    const zonePolygons: Record<number, [number, number][]> = {
+        13: [
+            [-1.5, 0.5], [-1.5, 2.5], [-0.71, 2.5], [0, 1.5], [0, 0.5], [-0.71, 1.5]
+        ],
+        14: [
+            [0, 1.5], [0, 0.5], [0.71, 1.5], [0.71, 2.5], [1.5, 2.5], [1.5, 0.5]
+        ],
+        11: [
+            [-1.5, 2.5], [-0.71, 2.5], [-0.71, 3.5], [0, 3.5], [0, 4.5], [-1.5, 4.5]
+        ],
+        12: [
+            [0, 4.5], [0, 3.5], [0.71, 3.5], [0.71, 2.5], [1.5, 2.5], [1.5, 4.5]
+        ]
+    };
+
+    // Get MLB Statcast zone
+    function getZone(plate_x: number, plate_z: number): number | null {
+        // Inner zone boundaries
+        const xMin = -0.71, xMax = 0.71;
+        const zMin = 1.5, zMax = 3.5;
+        // 3x3 grid
+        if (plate_x >= xMin && plate_x <= xMax && plate_z >= zMin && plate_z <= zMax) {
+            const cellWidth = (xMax - xMin) / 3;
+            const cellHeight = (zMax - zMin) / 3;
+            const col = Math.floor((plate_x - xMin) / cellWidth); // 0,1,2
+            const row = 2 - Math.floor((plate_z - zMin) / cellHeight); // flip: 0=top, 2=bottom
+            const zone = row * 3 + col + 1;
+            return zone;
+        }
+        // Check polygons for 11,12,13,14
+        for (const zoneNum of [11, 12, 13, 14]) {
+            if (pointInPolygon(plate_x, plate_z, zonePolygons[zoneNum])) {
+                return zoneNum;
+            }
+        }
+        return null;
+    }
+
+    // Handle pitch simulation
+    const handleSimulatePitch = async () => {
+        if (!pitcher || !hitter || !pitchType || !marker) return;
+
+        setSimulating(true);
+        setSimulationResult(null);
+
+        try {
+            const coords = convertToStatcastCoords(marker.x, marker.y);
+            const zone = getZone(coords.plate_x, coords.plate_z);
+            const response = await axios.post("http://localhost:5001/simulate_pitch", {
+                pitcher,
+                hitter,
+                pitch_type: pitchType,
+                plate_x: coords.plate_x,
+                plate_z: coords.plate_z,
+                zone, // add zone to payload
+                handedness: DEMO_HANDEDNESS[hitter] || "R"
+            });
+
+            setSimulationResult(response.data);
+        } catch (error) {
+            console.error("Pitch simulation failed:", error);
+            setPitchError("Failed to simulate pitch. Please try again.");
+        } finally {
+            setSimulating(false);
+        }
+    };
 
     let handedness: "R" | "L" = "R";
     if (hitter) {
@@ -237,10 +373,42 @@ export default function SimulateAtBatPage() {
                 <div className="flex flex-col items-center mt-6">
                     <div className="mb-2 font-semibold text-lg">Click in the box to place your pitch</div>
                     <StrikeZoneDisplay marker={marker} onSelect={(x, y) => setMarker({ x, y })} markerColor={pitchType ? getPitchColor(pitchType, pitchTypes) : "#d97706"} />
+                    {marker && (() => {
+                        const coords = convertToStatcastCoords(marker.x, marker.y);
+                        const zone = getZone(coords.plate_x, coords.plate_z);
+                        return (
+                            <div className="mt-2 text-base text-blue-700 font-bold">
+                                Zone: {zone !== null ? zone : "(none)"} (plate_x: {coords.plate_x.toFixed(2)}, plate_z: {coords.plate_z.toFixed(2)})
+                            </div>
+                        );
+                    })()}
                 </div>
-                <button className="bg-green-600 text-white px-4 py-2 rounded font-semibold w-full mt-6" disabled={!pitchType || !marker}>
-                    Simulate Pitch (Demo)
+                <button
+                    className="bg-green-600 text-white px-4 py-2 rounded font-semibold w-full mt-6 disabled:bg-gray-400"
+                    disabled={!pitchType || !marker || simulating}
+                    onClick={handleSimulatePitch}
+                >
+                    {simulating ? "Simulating..." : "Simulate Pitch"}
                 </button>
+
+                {simulationResult && (
+                    <div className="mt-4 p-4 bg-blue-50 rounded-lg border">
+                        <h3 className="font-semibold text-lg mb-2">Pitch Result</h3>
+                        <div className="grid grid-cols-2 gap-4">
+                            <div>
+                                <span className="font-medium">Outcome:</span> {simulationResult.outcome}
+                            </div>
+                            <div>
+                                <span className="font-medium">Confidence:</span> {(simulationResult.confidence * 100).toFixed(1)}%
+                            </div>
+                            {simulationResult.details && (
+                                <div className="col-span-2">
+                                    <span className="font-medium">Details:</span> {simulationResult.details}
+                                </div>
+                            )}
+                        </div>
+                    </div>
+                )}
             </div>
         </div>
     );

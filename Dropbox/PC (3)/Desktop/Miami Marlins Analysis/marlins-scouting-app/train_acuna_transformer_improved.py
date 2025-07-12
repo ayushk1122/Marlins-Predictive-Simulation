@@ -12,6 +12,34 @@ from sklearn.metrics import mean_absolute_error, mean_squared_error, r2_score
 # Load dataset
 df = pd.read_csv("ronald_acuna_jr_complete_career_statcast.csv")
 
+# Create holdout dataset (10% for holdout, 90% for training)
+print("📊 Creating holdout dataset...")
+df['game_date'] = pd.to_datetime(df['game_date'])
+df = df.sort_values('game_date')
+
+# Split chronologically - use last 10% of games for holdout
+unique_games = df['game_date'].dt.date.unique()
+split_idx = int(len(unique_games) * 0.9)  # 90% for training
+
+train_games = unique_games[:split_idx]
+holdout_games = unique_games[split_idx:]
+
+train_mask = df['game_date'].dt.date.isin(train_games)
+holdout_mask = df['game_date'].dt.date.isin(holdout_games)
+
+df_train = df[train_mask].copy()
+df_holdout = df[holdout_mask].copy()
+
+print(f"Training set: {len(df_train)} pitches ({len(train_games)} games)")
+print(f"Holdout set: {len(df_holdout)} pitches ({len(holdout_games)} games)")
+
+# Save holdout dataset
+df_holdout.to_csv("ronald_acuna_jr_holdout_statcast.csv", index=False)
+print("✅ Holdout dataset saved to 'ronald_acuna_jr_holdout_statcast.csv'")
+
+# Use training data for model training
+df = df_train
+
 # Drop missing outcomes
 df = df.dropna(subset=['description', 'events'])
 

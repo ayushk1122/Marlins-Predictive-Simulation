@@ -1,0 +1,15 @@
+{
+  "pitcher": "Sandy Alc\u00e1ntara",
+  "hitter": "Acuna Jr.",
+  "pitch_type": "CH",
+  "plate_x": -0.36477058103745796,
+  "plate_z": 2.5757764022542826,
+  "zone": 4,
+  "handedness": "R",
+  "in_strike_zone": true,
+  "outcome": "Swinging Strike",
+  "confidence": 0.6138661245834297,
+  "swing_probability": 0.31971157574182224,
+  "timestamp": "2025-07-12T02:01:46.511136",
+  "details": "Pitch at (-0.36, 2.58) - CH pitch"
+}

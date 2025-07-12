@@ -1,0 +1,15 @@
+{
+  "pitcher": "Sandy Alc\u00e1ntara",
+  "hitter": "Acuna Jr.",
+  "pitch_type": "SL",
+  "plate_x": -1.4871417878123339,
+  "plate_z": 0.7844719738693711,
+  "zone": 13,
+  "handedness": "R",
+  "in_strike_zone": false,
+  "outcome": "Field Out",
+  "confidence": 0.5698868569334693,
+  "swing_probability": 0.5087494237342987,
+  "timestamp": "2025-07-12T02:03:58.020858",
+  "details": "Pitch at (-1.49, 0.78) - SL pitch"
+}

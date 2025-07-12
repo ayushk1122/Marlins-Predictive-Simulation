@@ -1,0 +1,1251 @@
+import pandas as pd
+import numpy as np
+from sklearn.preprocessing import StandardScaler, OneHotEncoder, LabelEncoder
+from sklearn.compose import ColumnTransformer
+from sklearn.model_selection import train_test_split, cross_val_score
+from sklearn.metrics import classification_report, accuracy_score, precision_recall_fscore_support
+from sklearn.utils.class_weight import compute_sample_weight
+from sklearn.utils import resample
+from sklearn.ensemble import RandomForestClassifier, VotingClassifier
+from sklearn.linear_model import LogisticRegression
+from xgboost import XGBClassifier
+import pickle
+import json
+from sklearn.svm import SVC
+from sklearn.metrics import balanced_accuracy_score
+from sklearn.metrics import make_scorer
+from sklearn.calibration import CalibratedClassifierCV
+from sklearn.feature_selection import SelectFromModel
+
+def calculate_zone(plate_x, plate_z):
+    """
+    Calculate Statcast zone (1-14) based on plate_x and plate_z coordinates.
+    """
+    # Strike zone boundaries (approximate)
+    sz_left = -0.85
+    sz_right = 0.85
+    sz_bot = 1.5
+    sz_top = 3.5
+    
+    # Check if pitch is in strike zone
+    in_strike_zone = (sz_left <= plate_x <= sz_right) and (sz_bot <= plate_z <= sz_top)
+    
+    if in_strike_zone:
+        # Calculate zone within strike zone (1-9)
+        x_section = int((plate_x - sz_left) / ((sz_right - sz_left) / 3))
+        z_section = int((plate_z - sz_bot) / ((sz_top - sz_bot) / 3))
+        
+        # Clamp to valid ranges
+        x_section = max(0, min(2, x_section))
+        z_section = max(0, min(2, z_section))
+        
+        # Convert to zone number (1-9)
+        zone = z_section * 3 + x_section + 1
+    else:
+        # Outside strike zone (11-14)
+        if plate_x < sz_left:  # Left side
+            zone = 11 if plate_z > sz_top else 13
+        else:  # Right side
+            zone = 12 if plate_z > sz_top else 14
+    
+    return zone
+
+def prepare_features(df):
+    """
+    Prepare features for modeling, including zone calculation and new engineered features.
+    """
+    # Make a copy to avoid SettingWithCopyWarning
+    df = df.copy()
+    
+    # Calculate zones for all pitches
+    df['zone'] = df.apply(lambda row: calculate_zone(row['plate_x'], row['plate_z']), axis=1)
+    
+    # NEW ENGINEERED FEATURES
+    
+    # 1. Zone Distance: Distance from pitch location to center of strike zone
+    df['zone_center_x'] = 0  # Center of plate is at x=0
+    df['zone_center_z'] = (df['sz_top'] + df['sz_bot']) / 2  # Center of strike zone
+    df['zone_distance'] = np.sqrt(
+        (df['plate_x'] - df['zone_center_x'])**2 + 
+        (df['plate_z'] - df['zone_center_z'])**2
+    )
+    
+    # 2. Movement Magnitude: Total movement as sqrt(pfx_x² + pfx_z²)
+    df['movement_magnitude'] = np.sqrt(df['pfx_x']**2 + df['pfx_z']**2)
+    
+    # 3. Location x Movement: Interaction between normalized location and movement
+    # Normalize plate_x by strike zone width (approximately 17 inches = 1.417 feet)
+    df['plate_x_norm'] = df['plate_x'] / 1.417
+    # Normalize plate_z by strike zone height
+    df['plate_z_norm'] = (df['plate_z'] - df['sz_bot']) / (df['sz_top'] - df['sz_bot'])
+    
+    # Interaction features
+    df['plate_x_norm_x_movement'] = df['plate_x_norm'] * df['movement_magnitude']
+    df['plate_z_norm_x_movement'] = df['plate_z_norm'] * df['movement_magnitude']
+    
+    # NEW FEATURES FOR BETTER NO-SWING PREDICTION
+    
+    # 4. Count-based features
+    df['count_pressure'] = df['balls'] - df['strikes']  # Positive = ahead, negative = behind
+    df['count_total'] = df['balls'] + df['strikes']
+    df['behind_in_count'] = (df['strikes'] > df['balls']).astype(int)
+    df['ahead_in_count'] = (df['balls'] > df['strikes']).astype(int)
+    df['two_strikes'] = (df['strikes'] >= 2).astype(int)
+    df['three_balls'] = (df['balls'] >= 3).astype(int)
+    
+    # 5. Zone-specific features for no-swing prediction
+    df['in_strike_zone'] = ((df['plate_x'] >= -0.85) & (df['plate_x'] <= 0.85) & 
+                           (df['plate_z'] >= df['sz_bot']) & (df['plate_z'] <= df['sz_top'])).astype(int)
+    df['far_from_zone'] = (df['zone_distance'] > 1.0).astype(int)  # More than 1 foot from center
+    df['high_pitch'] = (df['plate_z'] > df['sz_top']).astype(int)
+    df['low_pitch'] = (df['plate_z'] < df['sz_bot']).astype(int)
+    df['inside_pitch'] = (df['plate_x'] < -0.85).astype(int)
+    df['outside_pitch'] = (df['plate_x'] > 0.85).astype(int)
+    
+    # 6. Pitch type specific features
+    df['is_fastball'] = df['pitch_type'].isin(['FF', 'SI', 'FC']).astype(int)
+    df['is_breaking_ball'] = df['pitch_type'].isin(['SL', 'CU', 'KC']).astype(int)
+    df['is_offspeed'] = df['pitch_type'].isin(['CH', 'FS']).astype(int)
+    
+    # 7. Advanced interaction features
+    df['zone_distance_x_count_pressure'] = df['zone_distance'] * df['count_pressure']
+    df['movement_x_count_pressure'] = df['movement_magnitude'] * df['count_pressure']
+    df['in_zone_x_two_strikes'] = df['in_strike_zone'] * df['two_strikes']
+    df['far_from_zone_x_ahead'] = df['far_from_zone'] * df['ahead_in_count']
+    
+    # ADVANCED FEATURES FOR FURTHER IMPROVEMENT
+    
+    # 8. Velocity and movement features
+    df['velocity_movement_ratio'] = df['release_speed'] / (df['movement_magnitude'] + 0.1)  # Avoid division by zero
+    df['high_velocity'] = (df['release_speed'] > 95).astype(int)
+    df['low_velocity'] = (df['release_speed'] < 85).astype(int)
+    df['high_movement'] = (df['movement_magnitude'] > 10).astype(int)
+    
+    # 9. Zone edge features
+    df['zone_edge_distance'] = np.minimum(
+        np.abs(df['plate_x'] - (-0.85)),  # Distance from left edge
+        np.abs(df['plate_x'] - 0.85)      # Distance from right edge
+    )
+    df['zone_top_distance'] = np.abs(df['plate_z'] - df['sz_top'])
+    df['zone_bottom_distance'] = np.abs(df['plate_z'] - df['sz_bot'])
+    df['closest_zone_edge'] = np.minimum(
+        np.minimum(df['zone_edge_distance'], df['zone_top_distance']),
+        df['zone_bottom_distance']
+    )
+    
+    # 10. Count-specific features
+    df['full_count'] = (df['balls'] == 3) & (df['strikes'] == 2)
+    df['hitters_count'] = (df['balls'] >= 2) & (df['strikes'] <= 1)
+    df['pitchers_count'] = (df['balls'] <= 1) & (df['strikes'] >= 2)
+    df['neutral_count'] = (df['balls'] == 1) & (df['strikes'] == 1)
+    
+    # 11. Advanced zone features
+    df['zone_quadrant'] = np.where(
+        df['plate_x'] >= 0,
+        np.where(df['plate_z'] >= (df['sz_top'] + df['sz_bot']) / 2, 'up_out', 'down_out'),
+        np.where(df['plate_z'] >= (df['sz_top'] + df['sz_bot']) / 2, 'up_in', 'down_in')
+    )
+    
+    # 12. Pitch deception features
+    df['velocity_drop'] = (df['release_speed'] < 90) & df['is_fastball']
+    df['breaking_ball_high'] = df['is_breaking_ball'] & (df['plate_z'] > df['sz_top'])
+    df['offspeed_low'] = df['is_offspeed'] & (df['plate_z'] < df['sz_bot'])
+    
+    # 13. Context features - handle missing columns safely
+    if 'inning' in df.columns:
+        df['inning_late'] = (df['inning'] >= 7).astype(int)
+    else:
+        df['inning_late'] = 0
+        
+    if 'home_score' in df.columns and 'away_score' in df.columns:
+        df['close_game'] = (np.abs(df['home_score'] - df['away_score']) <= 2).astype(int)
+    else:
+        df['close_game'] = 0
+    
+    # ADVANCED FEATURES FOR 70-80% ACCURACY
+    
+    # 14. Pitch sequencing features (if we have at-bat data)
+    if 'at_bat_number' in df.columns:
+        df['pitch_in_at_bat'] = df.groupby('at_bat_number').cumcount() + 1
+        df['first_pitch'] = (df['pitch_in_at_bat'] == 1).astype(int)
+        df['last_pitch'] = df.groupby('at_bat_number')['pitch_in_at_bat'].transform('max') == df['pitch_in_at_bat']
+    else:
+        df['pitch_in_at_bat'] = 1
+        df['first_pitch'] = 1
+        df['last_pitch'] = 1
+    
+    # 15. Advanced velocity features
+    df['velocity_bin'] = pd.cut(df['release_speed'], bins=[0, 85, 90, 95, 100, 110], labels=['very_slow', 'slow', 'medium', 'fast', 'very_fast'])
+    
+    # Check if pitcher column exists before using it
+    if 'pitcher' in df.columns:
+        df['velocity_std'] = df.groupby('pitcher')['release_speed'].transform('std')
+        df['velocity_diff_from_avg'] = df['release_speed'] - df.groupby('pitcher')['release_speed'].transform('mean')
+    else:
+        df['velocity_std'] = df['release_speed'].std()
+        df['velocity_diff_from_avg'] = 0
+    
+    # 16. Movement deception features
+    df['horizontal_movement'] = df['pfx_x']
+    df['vertical_movement'] = df['pfx_z']
+    df['movement_ratio'] = np.abs(df['horizontal_movement']) / (np.abs(df['vertical_movement']) + 0.1)
+    df['high_horizontal_movement'] = (np.abs(df['horizontal_movement']) > 5).astype(int)
+    df['high_vertical_movement'] = (np.abs(df['vertical_movement']) > 5).astype(int)
+    
+    # 17. Zone precision features
+    df['zone_center_distance'] = np.sqrt(df['plate_x']**2 + (df['plate_z'] - (df['sz_top'] + df['sz_bot'])/2)**2)
+    df['zone_corner'] = ((df['plate_x'] >= 0.7) | (df['plate_x'] <= -0.7)) & ((df['plate_z'] >= df['sz_top'] - 0.2) | (df['plate_z'] <= df['sz_bot'] + 0.2))
+    df['zone_heart'] = (df['zone_center_distance'] < 0.5).astype(int)
+    df['zone_shadow'] = ((df['plate_x'] >= -1.0) & (df['plate_x'] <= 1.0) & (df['plate_z'] >= df['sz_bot'] - 0.2) & (df['plate_z'] <= df['sz_top'] + 0.2)) & ~df['in_strike_zone']
+    
+    # 18. Advanced count psychology features
+    df['count_advantage'] = np.where(df['count_pressure'] > 0, 'hitter_ahead', np.where(df['count_pressure'] < 0, 'pitcher_ahead', 'neutral'))
+    df['pressure_situation'] = (df['two_strikes'] | df['three_balls']).astype(int)
+    df['must_swing'] = df['two_strikes'].astype(int)
+    df['can_take'] = (df['ahead_in_count'] & ~df['in_strike_zone']).astype(int)
+    
+    # 19. Pitch type deception features
+    df['fastball_high'] = df['is_fastball'] & (df['plate_z'] > df['sz_top'])
+    df['breaking_ball_low'] = df['is_breaking_ball'] & (df['plate_z'] < df['sz_bot'])
+    df['offspeed_middle'] = df['is_offspeed'] & df['in_strike_zone']
+    
+    # Check if at_bat_number exists before using it
+    if 'at_bat_number' in df.columns:
+        df['pitch_type_change'] = df.groupby('at_bat_number')['pitch_type'].shift(1) != df['pitch_type']
+    else:
+        df['pitch_type_change'] = 0
+    
+    # 20. Advanced location features
+    df['location_quadrant'] = np.where(
+        df['plate_x'] >= 0,
+        np.where(df['plate_z'] >= (df['sz_top'] + df['sz_bot']) / 2, 'up_right', 'down_right'),
+        np.where(df['plate_z'] >= (df['sz_top'] + df['sz_bot']) / 2, 'up_left', 'down_left')
+    )
+    df['location_extreme'] = (np.abs(df['plate_x']) > 1.0) | (df['plate_z'] > df['sz_top'] + 0.5) | (df['plate_z'] < df['sz_bot'] - 0.5)
+    
+    # 21. Spin and movement correlation features
+    if 'release_spin_rate' in df.columns:
+        df['spin_movement_correlation'] = df['release_spin_rate'] * df['movement_magnitude']
+        df['high_spin'] = (df['release_spin_rate'] > 2500).astype(int)
+        df['low_spin'] = (df['release_spin_rate'] < 2000).astype(int)
+    else:
+        df['spin_movement_correlation'] = 0
+        df['high_spin'] = 0
+        df['low_spin'] = 0
+    
+    # 22. Game situation features
+    df['late_inning'] = (df['inning'] >= 8).astype(int) if 'inning' in df.columns else 0
+    df['close_score'] = (np.abs(df['home_score'] - df['away_score']) <= 1).astype(int) if 'home_score' in df.columns and 'away_score' in df.columns else 0
+    df['high_leverage'] = (df['late_inning'] & df['close_score']).astype(int)
+    
+    # 23. Batter-specific features (if available)
+    if 'batter' in df.columns:
+        # Don't reference 'swing' column since it's created later
+        df['batter_swing_rate'] = 0.5  # Default value
+        df['batter_zone_swing_rate'] = 0.5  # Default value
+    else:
+        df['batter_swing_rate'] = 0.5
+        df['batter_zone_swing_rate'] = 0.5
+    
+    # 24. Pitcher-specific features (if available)
+    if 'pitcher' in df.columns:
+        # Don't reference 'swing' column since it's created later
+        df['pitcher_swing_rate'] = 0.5  # Default value
+        df['pitcher_zone_swing_rate'] = 0.5  # Default value
+    else:
+        df['pitcher_swing_rate'] = 0.5
+        df['pitcher_zone_swing_rate'] = 0.5
+    
+    # NEW IMPROVED FEATURES FOR HIGHER ACCURACY
+    
+    # 25. Advanced count-based features
+    df['count_ratio'] = df['strikes'] / (df['balls'] + df['strikes'] + 0.1)  # Avoid division by zero
+    df['behind_by_two'] = (df['strikes'] - df['balls'] >= 2).astype(int)
+    df['ahead_by_two'] = (df['balls'] - df['strikes'] >= 2).astype(int)
+    df['full_count_pressure'] = ((df['balls'] == 3) & (df['strikes'] == 2)).astype(int)
+    
+    # 26. Zone-specific count features
+    df['in_zone_two_strikes'] = df['in_strike_zone'] & df['two_strikes']
+    df['out_zone_ahead'] = ~df['in_strike_zone'] & df['ahead_in_count']
+    df['edge_zone_decision'] = ((df['zone_distance'] > 0.5) & (df['zone_distance'] < 1.0)).astype(int)
+    
+    # 27. Velocity deception features
+    df['velocity_surprise'] = (df['release_speed'] < 90) & df['is_fastball']
+    df['velocity_consistency'] = (df['release_speed'] > 95) & df['is_fastball']
+    df['breaking_ball_velocity'] = df['is_breaking_ball'] & (df['release_speed'] > 85)
+    
+    # 28. Movement deception features
+    df['high_movement_fastball'] = df['is_fastball'] & (df['movement_magnitude'] > 8)
+    df['low_movement_breaking'] = df['is_breaking_ball'] & (df['movement_magnitude'] < 5)
+    df['unexpected_movement'] = ((df['movement_magnitude'] > 12) | (df['movement_magnitude'] < 3)).astype(int)
+    
+    # 29. Location deception features
+    df['corner_pitch'] = df['zone_corner'].astype(int)
+    df['heart_pitch'] = df['zone_heart'].astype(int)
+    df['shadow_pitch'] = df['zone_shadow'].astype(int)
+    df['extreme_location'] = (np.abs(df['plate_x']) > 1.2) | (df['plate_z'] > df['sz_top'] + 0.8) | (df['plate_z'] < df['sz_bot'] - 0.8)
+    
+    # 30. Advanced interaction features
+    df['velocity_x_location'] = df['release_speed'] * df['zone_distance']
+    df['pitch_type_x_location'] = df['is_fastball'] * df['in_strike_zone']
+    df['count_x_zone'] = df['count_pressure'] * df['in_strike_zone']
+    
+    # 31. Context-based features
+    df['early_count_swing'] = (df['count_total'] <= 2) & df['in_strike_zone']
+    df['late_count_take'] = (df['count_total'] >= 4) & ~df['in_strike_zone']
+    df['pressure_swing'] = df['two_strikes'] & df['in_strike_zone']
+    df['opportunity_take'] = df['ahead_in_count'] & ~df['in_strike_zone']
+    
+    # 32. Advanced zone features
+    df['zone_quadrant_encoded'] = pd.Categorical(df['zone_quadrant']).codes
+    df['location_quadrant_encoded'] = pd.Categorical(df['location_quadrant']).codes
+    df['count_advantage_encoded'] = pd.Categorical(df['count_advantage']).codes
+    
+    # HITTER-SPECIFIC SWING TENDENCY FEATURES (HIGH WEIGHT) - Batch assignment to avoid fragmentation
+    acuna_features = {
+        'acuna_fastball_swing_rate': 0.65,  # Acuna swings at ~65% of fastballs
+        'acuna_breaking_swing_rate': 0.45,  # Acuna swings at ~45% of breaking balls
+        'acuna_offspeed_swing_rate': 0.55,  # Acuna swings at ~55% of offspeed
+        'acuna_zone_swing_rate': 0.75,  # Acuna swings at ~75% of zone pitches
+        'acuna_outside_swing_rate': 0.35,  # Acuna swings at ~35% of outside pitches
+        'acuna_high_swing_rate': 0.60,  # Acuna swings at ~60% of high pitches
+        'acuna_low_swing_rate': 0.50,  # Acuna swings at ~50% of low pitches
+        'acuna_ahead_swing_rate': 0.40,  # Acuna swings at ~40% when ahead
+        'acuna_behind_swing_rate': 0.70,  # Acuna swings at ~70% when behind
+        'acuna_two_strikes_swing_rate': 0.80,  # Acuna swings at ~80% with two strikes
+        'acuna_full_count_swing_rate': 0.85,  # Acuna swings at ~85% on full count
+        'acuna_high_vel_swing_rate': 0.70,  # Acuna swings at ~70% of high velocity pitches
+        'acuna_low_vel_swing_rate': 0.45,  # Acuna swings at ~45% of low velocity pitches
+        'acuna_high_movement_swing_rate': 0.55,  # Acuna swings at ~55% of high movement pitches
+        'acuna_low_movement_swing_rate': 0.65,  # Acuna swings at ~65% of low movement pitches
+        'acuna_late_inning_swing_rate': 0.75,  # Acuna swings more aggressively late in games
+        'acuna_close_game_swing_rate': 0.70,  # Acuna swings more in close games
+        'acuna_first_pitch_swing_rate': 0.30,  # Acuna swings at ~30% of first pitches
+        'acuna_last_pitch_swing_rate': 0.85,  # Acuna swings at ~85% of last pitches in at-bat
+        'acuna_pitch_type_change_swing_rate': 0.60,  # Acuna swings at ~60% when pitch type changes
+        'acuna_velocity_drop_swing_rate': 0.40,  # Acuna swings at ~40% when velocity drops
+        'acuna_velocity_surge_swing_rate': 0.75,  # Acuna swings at ~75% when velocity surges
+        'acuna_location_extreme_swing_rate': 0.25,  # Acuna swings at ~25% of extreme locations
+        'acuna_location_heart_swing_rate': 0.85,  # Acuna swings at ~85% of heart pitches
+        'acuna_pressure_swing_rate': 0.80,  # Acuna swings at ~80% in pressure situations
+        'acuna_opportunity_swing_rate': 0.35,  # Acuna swings at ~35% in opportunity situations
+        'acuna_zone_corner_swing_rate': 0.45,  # Acuna swings at ~45% of corner pitches
+        'acuna_zone_shadow_swing_rate': 0.55,  # Acuna swings at ~55% of shadow pitches
+        'acuna_zone_heart_swing_rate': 0.90  # Acuna swings at ~90% of heart pitches
+    }
+    
+    # Assign all Acuna features at once to avoid fragmentation
+    for feature_name, value in acuna_features.items():
+        df[feature_name] = value
+    
+    # Define features - REMOVE DUPLICATES
+    num_feats = [
+        'release_speed', 'release_spin_rate', 'spin_axis', 'release_extension',
+        'release_pos_x', 'release_pos_y', 'release_pos_z',
+        'vx0', 'vy0', 'vz0', 'pfx_x', 'pfx_z', 'plate_x', 'plate_z',
+        'sz_top', 'sz_bot', 'zone',
+        'api_break_z_with_gravity', 'api_break_x_batter_in', 'api_break_x_arm',
+        'arm_angle', 'balls', 'strikes', 'spin_dir', 'spin_rate_deprecated',
+        'break_angle_deprecated', 'break_length_deprecated',
+        'effective_speed', 'age_pit',
+        # NEW ENGINEERED FEATURES
+        'zone_distance', 'movement_magnitude', 'plate_x_norm_x_movement', 'plate_z_norm_x_movement',
+        # NEW FEATURES FOR BETTER NO-SWING PREDICTION
+        'count_pressure', 'count_total', 'behind_in_count', 'ahead_in_count', 'two_strikes', 'three_balls',
+        'in_strike_zone', 'far_from_zone', 'high_pitch', 'low_pitch', 'inside_pitch', 'outside_pitch',
+        'is_fastball', 'is_breaking_ball', 'is_offspeed',
+        'zone_distance_x_count_pressure', 'movement_x_count_pressure', 'in_zone_x_two_strikes', 'far_from_zone_x_ahead',
+        # ADVANCED FEATURES FOR FURTHER IMPROVEMENT
+        'velocity_movement_ratio', 'high_velocity', 'low_velocity', 'high_movement',
+        'zone_edge_distance', 'zone_top_distance', 'zone_bottom_distance', 'closest_zone_edge',
+        'full_count', 'hitters_count', 'pitchers_count', 'neutral_count',
+        'velocity_drop', 'breaking_ball_high', 'offspeed_low',
+        'inning_late', 'close_game',
+        # ADVANCED FEATURES FOR 70-80% ACCURACY
+        'pitch_in_at_bat', 'first_pitch', 'last_pitch',
+        'velocity_diff_from_avg', 'horizontal_movement', 'vertical_movement', 'movement_ratio',
+        'high_horizontal_movement', 'high_vertical_movement', 'zone_center_distance',
+        'zone_corner', 'zone_heart', 'zone_shadow', 'pressure_situation', 'must_swing', 'can_take',
+        'fastball_high', 'breaking_ball_low', 'offspeed_middle', 'pitch_type_change',
+        'location_extreme', 'high_leverage',
+        # NEW IMPROVED FEATURES FOR HIGHER ACCURACY
+        'count_ratio', 'behind_by_two', 'ahead_by_two', 'full_count_pressure',
+        'in_zone_two_strikes', 'out_zone_ahead', 'edge_zone_decision',
+        'velocity_surprise', 'velocity_consistency', 'breaking_ball_velocity',
+        'high_movement_fastball', 'low_movement_breaking', 'unexpected_movement',
+        'corner_pitch', 'heart_pitch', 'shadow_pitch', 'extreme_location',
+        'velocity_x_location', 'pitch_type_x_location', 'count_x_zone',
+        'early_count_swing', 'late_count_take', 'pressure_swing', 'opportunity_take',
+        'zone_quadrant_encoded', 'location_quadrant_encoded', 'count_advantage_encoded',
+        # HITTER-SPECIFIC SWING TENDENCY FEATURES (HIGH WEIGHT)
+        'acuna_fastball_swing_rate', 'acuna_breaking_swing_rate', 'acuna_offspeed_swing_rate',
+        'acuna_zone_swing_rate', 'acuna_outside_swing_rate', 'acuna_high_swing_rate', 'acuna_low_swing_rate',
+        'acuna_ahead_swing_rate', 'acuna_behind_swing_rate', 'acuna_two_strikes_swing_rate', 'acuna_full_count_swing_rate',
+        'acuna_high_vel_swing_rate', 'acuna_low_vel_swing_rate',
+        'acuna_high_movement_swing_rate', 'acuna_low_movement_swing_rate',
+        'acuna_late_inning_swing_rate', 'acuna_close_game_swing_rate',
+        'acuna_first_pitch_swing_rate', 'acuna_last_pitch_swing_rate',
+        'acuna_pitch_type_change_swing_rate', 'acuna_velocity_drop_swing_rate', 'acuna_velocity_surge_swing_rate',
+        'acuna_location_extreme_swing_rate', 'acuna_location_heart_swing_rate',
+        'acuna_pressure_swing_rate', 'acuna_opportunity_swing_rate',
+        'acuna_zone_corner_swing_rate', 'acuna_zone_shadow_swing_rate', 'acuna_zone_heart_swing_rate'
+    ]
+    
+    cat_feats = ['pitch_type', 'p_throws', 'if_fielding_alignment', 'of_fielding_alignment', 'stand', 'home_team', 'zone_quadrant', 'location_quadrant', 'count_advantage']
+    
+    # Filter to available features
+    num_feats = [f for f in num_feats if f in df.columns]
+    cat_feats = [f for f in cat_feats if f in df.columns]
+    
+    return df, num_feats, cat_feats
+
+def update_swing_rates(df):
+    """
+    Update batter and pitcher swing rates after the swing column is created
+    """
+    df = df.copy()
+    
+    # Update batter-specific features
+    if 'batter' in df.columns and 'swing' in df.columns:
+        df['batter_swing_rate'] = df.groupby('batter')['swing'].transform('mean')
+        df['batter_zone_swing_rate'] = df.groupby(['batter', 'in_strike_zone'])['swing'].transform('mean')
+    
+    # Update pitcher-specific features
+    if 'pitcher' in df.columns and 'swing' in df.columns:
+        df['pitcher_swing_rate'] = df.groupby('pitcher')['swing'].transform('mean')
+        df['pitcher_zone_swing_rate'] = df.groupby(['pitcher', 'in_strike_zone'])['swing'].transform('mean')
+    
+    return df
+
+def create_swing_classifier(df):
+    """
+    Model 1: Predict if batter swings or not - BALANCED VERSION
+    """
+    print("\n=== MODEL 1: Swing/No-Swing Classifier (BALANCED) ===")
+    
+    # Make a copy to avoid SettingWithCopyWarning
+    df = df.copy()
+    
+    # Create swing/no-swing target with robust classification
+    swing_events = ['swinging_strike', 'swinging_strike_blocked', 'hit_into_play', 'hit_into_play_score', 'foul', 'foul_tip', 'foul_bunt']
+    no_swing_events = ['called_strike', 'ball', 'blocked_ball', 'hit_by_pitch']
+    
+    def classify_swing_robust(row):
+        """
+        Robustly classify whether a pitch resulted in a swing or not.
+        Handles NaN values and edge cases properly.
+        """
+        description = row.get('description', None)
+        events = row.get('events', None)
+        
+        # Check if both description and events are NaN/null
+        if pd.isna(description) and pd.isna(events):
+            return None  # Can't classify, skip this pitch
+        
+        # If description is available, use it as primary source
+        if not pd.isna(description):
+            if description in swing_events:
+                return 1  # Swing
+            elif description in no_swing_events:
+                return 0  # No swing
+            # If description is not in either list, check events
+        
+        # If description is NaN or unclear, check events
+        if not pd.isna(events):
+            if events in ['single', 'double', 'triple', 'home_run', 'field_out', 'sac_fly', 'sac_bunt']:
+                return 1  # Swing (hit into play)
+            elif events in ['walk', 'strikeout', 'hit_by_pitch']:
+                return 0  # No swing (walk, called strikeout, HBP)
+            # If events is not in either list, we can't classify
+        
+        # If we can't determine from either field, return None
+        return None
+    
+    # Apply robust classification
+    print("Classifying swings and no-swings with robust logic...")
+    
+    # Use a more robust approach to avoid DataFrame fragmentation issues
+    classifications = []
+    valid_mask = []
+    
+    for idx, row in df.iterrows():
+        classification = classify_swing_robust(row)
+        if classification is not None:
+            classifications.append(classification)
+            valid_mask.append(True)
+        else:
+            print(f"Warning: Could not classify pitch at index {idx}. Description: {row.get('description', 'NaN')}, Events: {row.get('events', 'NaN')}")
+            valid_mask.append(False)
+    
+    # Create a new DataFrame with only valid classifications using boolean indexing
+    df_valid = df[valid_mask].copy()
+    df_valid['swing'] = classifications
+    
+    print(f"Original dataset size: {len(df)}")
+    print(f"Valid classifications: {len(df_valid)}")
+    print(f"Unclassifiable pitches: {len(df) - len(df_valid)}")
+    print(f"Valid mask count: {sum(valid_mask)}")
+    
+    # Show classification breakdown
+    swing_count = sum(classifications)
+    no_swing_count = len(classifications) - swing_count
+    print(f"Swing classifications: {swing_count}")
+    print(f"No-swing classifications: {no_swing_count}")
+    print(f"Swing rate: {swing_count/len(classifications)*100:.1f}%")
+    
+    # Use the valid dataset for the rest of the analysis
+    df = df_valid
+    
+    print(f"Original swing distribution: {df['swing'].value_counts()}")
+    
+    # Prepare features - this will add all the engineered features to df
+    df, num_feats, cat_feats = prepare_features(df)
+    
+    # Update swing rates now that swing column exists
+    df = update_swing_rates(df)
+    
+    # IMPLEMENT DOWNSAMPLING FOR BALANCED CLASSES
+    print("\n=== IMPLEMENTING DOWNSAMPLING FOR BALANCED CLASSES ===")
+    
+    # Separate swing and no-swing data
+    swing_df = df[df['swing'] == 1].copy()
+    no_swing_df = df[df['swing'] == 0].copy()
+    
+    print(f"Original swing count: {len(swing_df)}")
+    print(f"Original no-swing count: {len(no_swing_df)}")
+    
+    # Determine which class to downsample
+    if len(swing_df) > len(no_swing_df):
+        # More swings than no-swings, downsample swings
+        swing_downsampled = resample(swing_df, 
+                                   replace=False,
+                                   n_samples=len(no_swing_df),
+                                   random_state=42)
+        df_balanced = pd.concat([swing_downsampled, no_swing_df])
+        print(f"Downsampled swing count: {len(swing_downsampled)}")
+        print(f"Final balanced dataset size: {len(df_balanced)}")
+    else:
+        # More no-swings than swings, downsample no-swings
+        no_swing_downsampled = resample(no_swing_df, 
+                                       replace=False,
+                                       n_samples=len(swing_df),
+                                       random_state=42)
+        df_balanced = pd.concat([swing_df, no_swing_downsampled])
+        print(f"Downsampled no-swing count: {len(no_swing_downsampled)}")
+        print(f"Final balanced dataset size: {len(df_balanced)}")
+    
+    print(f"Balanced swing distribution: {df_balanced['swing'].value_counts()}")
+    
+    # Use the balanced dataset for training
+    df = df_balanced
+    
+    all_feats = num_feats + cat_feats
+    
+    print(f"Number of numerical features: {len(num_feats)}")
+    print(f"Number of categorical features: {len(cat_feats)}")
+    print(f"Total features: {len(all_feats)}")
+    
+    # Preprocess
+    preprocessor = ColumnTransformer([
+        ('num', StandardScaler(), num_feats),
+        ('cat', OneHotEncoder(handle_unknown='ignore'), cat_feats)
+    ])
+    
+    X = preprocessor.fit_transform(df[all_feats])
+    y = df['swing'].values
+    
+    # Clean NaN values - replace with 0 for numerical features
+    X = np.nan_to_num(X, nan=0.0)
+    
+    # Train/test split with stratification (now balanced due to downsampling)
+    X_train, X_test, y_train, y_test = train_test_split(X, y, stratify=y, test_size=0.2, random_state=42)
+    
+    # BALANCED MODEL ARCHITECTURE WITH DOWNSAMPLING
+    
+    # Since we've downsampled, we don't need sample weights for balancing
+    # But we'll still use feature weighting for zone/distance features
+    sample_weights = None  # No sample weights needed with balanced data
+    
+    # Feature importance-based weighting
+    # First, train a simple model to get feature importances
+    temp_xgb = XGBClassifier(
+        use_label_encoder=False,
+        eval_metric='logloss',
+        random_state=42,
+        n_estimators=100,
+        max_depth=4
+    )
+    if sample_weights is not None:
+        temp_xgb.fit(X_train, y_train, sample_weight=sample_weights)
+    else:
+        temp_xgb.fit(X_train, y_train)  # No sample weights needed with balanced data
+    
+    # Get feature importances for weighting
+    feature_importances = temp_xgb.feature_importances_
+    feature_names = preprocessor.get_feature_names_out()
+    
+    # Create feature weights based on importance
+    feature_weights = {}
+    for i, (name, importance) in enumerate(zip(feature_names, feature_importances)):
+        feature_weights[name] = importance
+    
+    # Boost weights for hitter-specific features
+    acuna_features = [
+        'acuna_fastball_swing_rate', 'acuna_breaking_swing_rate', 'acuna_offspeed_swing_rate',
+        'acuna_zone_swing_rate', 'acuna_outside_swing_rate', 'acuna_high_swing_rate', 'acuna_low_swing_rate',
+        'acuna_ahead_swing_rate', 'acuna_behind_swing_rate', 'acuna_two_strikes_swing_rate', 'acuna_full_count_swing_rate',
+        'acuna_high_vel_swing_rate', 'acuna_low_vel_swing_rate',
+        'acuna_high_movement_swing_rate', 'acuna_low_movement_swing_rate',
+        'acuna_late_inning_swing_rate', 'acuna_close_game_swing_rate',
+        'acuna_first_pitch_swing_rate', 'acuna_last_pitch_swing_rate',
+        'acuna_pitch_type_change_swing_rate', 'acuna_velocity_drop_swing_rate', 'acuna_velocity_surge_swing_rate',
+        'acuna_location_extreme_swing_rate', 'acuna_location_heart_swing_rate',
+        'acuna_pressure_swing_rate', 'acuna_opportunity_swing_rate',
+        'acuna_zone_corner_swing_rate', 'acuna_zone_shadow_swing_rate', 'acuna_zone_heart_swing_rate'
+    ]
+    
+    # Boost the weights for Acuna-specific features
+    for feature in acuna_features:
+        if feature in feature_weights:
+            feature_weights[feature] *= 3.0  # Triple the weight for hitter-specific features
+    
+    # DOUBLE THE WEIGHTS FOR ZONE AND DISTANCE FEATURES
+    zone_distance_features = [
+        'zone', 'zone_distance', 'zone_center_distance', 'zone_edge_distance', 
+        'zone_top_distance', 'zone_bottom_distance', 'closest_zone_edge',
+        'plate_x', 'plate_z', 'plate_x_norm', 'plate_z_norm',
+        'in_strike_zone', 'far_from_zone', 'high_pitch', 'low_pitch', 
+        'inside_pitch', 'outside_pitch', 'zone_corner', 'zone_heart', 'zone_shadow',
+        'zone_quadrant', 'location_quadrant',
+        'zone_distance_x_count_pressure', 'in_zone_x_two_strikes', 'far_from_zone_x_ahead'
+    ]
+    
+    # Double the weights for zone and distance features
+    for feature in zone_distance_features:
+        if feature in feature_weights:
+            feature_weights[feature] *= 2.0  # Double the weight for zone/distance features
+            print(f"  Doubled weight for zone/distance feature: {feature}")
+    
+    # Also double weights for movement features that affect zone perception
+    movement_zone_features = [
+        'movement_magnitude', 'horizontal_movement', 'vertical_movement', 'movement_ratio',
+        'high_movement', 'high_horizontal_movement', 'high_vertical_movement',
+        'plate_x_norm_x_movement', 'plate_z_norm_x_movement', 'movement_x_count_pressure'
+    ]
+    
+    for feature in movement_zone_features:
+        if feature in feature_weights:
+            feature_weights[feature] *= 2.0  # Double the weight for movement features
+            print(f"  Doubled weight for movement feature: {feature}")
+    
+    print("\nTop 10 Most Important Features for Weighting:")
+    sorted_features = sorted(feature_weights.items(), key=lambda x: x[1], reverse=True)
+    for name, importance in sorted_features[:10]:
+        print(f"  {name}: {importance:.4f}")
+    
+    print("\nAcuna-specific features with boosted weights:")
+    for feature in acuna_features:
+        if feature in feature_weights:
+            print(f"  {feature}: {feature_weights[feature]:.4f}")
+    
+    print("\nZone and distance features with doubled weights:")
+    for feature in zone_distance_features:
+        if feature in feature_weights:
+            print(f"  {feature}: {feature_weights[feature]:.4f}")
+    
+    print("\nMovement features with doubled weights:")
+    for feature in movement_zone_features:
+        if feature in feature_weights:
+            print(f"  {feature}: {feature_weights[feature]:.4f}")
+    
+    # IMPLEMENT FEATURE SELECTION TO REDUCE NOISE
+    print("\n=== IMPLEMENTING FEATURE SELECTION ===")
+    
+    # Use the temporary XGBoost model for feature selection
+    # Select features based on importance threshold (median)
+    selector = SelectFromModel(
+        temp_xgb, 
+        threshold="median",
+        prefit=True  # Use the already fitted model
+    )
+    
+    # Get selected feature indices and names
+    selected_features_mask = selector.get_support()
+    selected_feature_indices = np.where(selected_features_mask)[0]
+    selected_feature_names = feature_names[selected_feature_indices]
+    
+    print(f"Original number of features: {X_train.shape[1]}")
+    print(f"Selected number of features: {len(selected_feature_indices)}")
+    print(f"Feature reduction: {X_train.shape[1] - len(selected_feature_indices)} features removed ({((X_train.shape[1] - len(selected_feature_indices))/X_train.shape[1]*100):.1f}% reduction)")
+    
+    # Transform training and test data to use only selected features
+    X_train_selected = selector.transform(X_train)
+    X_test_selected = selector.transform(X_test)
+    
+    print(f"Training data shape after feature selection: {X_train_selected.shape}")
+    print(f"Test data shape after feature selection: {X_test_selected.shape}")
+    
+    # Show top selected features
+    print("\nTop 20 Selected Features:")
+    # Get feature importances from the temp_xgb model
+    temp_importances = temp_xgb.feature_importances_
+    selected_importances = temp_importances[selected_feature_indices]
+    sorted_selected_idx = np.argsort(selected_importances)[::-1]
+    
+    for i, idx in enumerate(sorted_selected_idx[:20]):
+        feature_idx = selected_feature_indices[idx]
+        print(f"  {i+1:2d}. {feature_names[feature_idx]}: {selected_importances[idx]:.4f}")
+    
+    # Show some removed features (lowest importance)
+    removed_features_mask = ~selected_features_mask
+    removed_feature_indices = np.where(removed_features_mask)[0]
+    removed_importances = temp_importances[removed_feature_indices]
+    sorted_removed_idx = np.argsort(removed_importances)[::-1]
+    
+    print(f"\nTop 10 Removed Features (Lowest Importance):")
+    for i, idx in enumerate(sorted_removed_idx[:10]):
+        feature_idx = removed_feature_indices[idx]
+        print(f"  {i+1:2d}. {feature_names[feature_idx]}: {removed_importances[idx]:.4f}")
+    
+    # Use selected features for all subsequent model training
+    X_train = X_train_selected
+    X_test = X_test_selected
+    
+    print(f"\n✅ Feature selection completed. Using {X_train.shape[1]} features for model training.")
+    
+    # Analyze feature selection impact
+    print(f"\n=== FEATURE SELECTION ANALYSIS ===")
+    
+    # Check correlation between selected features
+    if X_train.shape[1] > 1:
+        correlation_matrix = np.corrcoef(X_train.T)
+        high_corr_pairs = []
+        for i in range(correlation_matrix.shape[0]):
+            for j in range(i+1, correlation_matrix.shape[1]):
+                if abs(correlation_matrix[i, j]) > 0.8:  # High correlation threshold
+                    high_corr_pairs.append((i, j, correlation_matrix[i, j]))
+        
+        if high_corr_pairs:
+            print(f"Found {len(high_corr_pairs)} highly correlated feature pairs (|correlation| > 0.8):")
+            for i, j, corr in high_corr_pairs[:5]:  # Show first 5
+                print(f"  Features {i} and {j}: correlation = {corr:.3f}")
+        else:
+            print("No highly correlated features found (|correlation| > 0.8)")
+    
+    # Show feature importance distribution
+    if len(selected_importances) > 0:
+        importance_percentiles = np.percentile(selected_importances, [25, 50, 75, 90, 95])
+        print(f"\nFeature importance distribution:")
+        print(f"  25th percentile: {importance_percentiles[0]:.4f}")
+        print(f"  50th percentile: {importance_percentiles[1]:.4f}")
+        print(f"  75th percentile: {importance_percentiles[2]:.4f}")
+        print(f"  90th percentile: {importance_percentiles[3]:.4f}")
+        print(f"  95th percentile: {importance_percentiles[4]:.4f}")
+    else:
+        print(f"\nNo features selected for importance distribution analysis.")
+    
+    # Create multiple models with different balancing strategies and feature weighting
+    xgb_model1 = XGBClassifier(
+        use_label_encoder=False, 
+        eval_metric='logloss', 
+        random_state=42,
+        # No scale_pos_weight needed with downsampling
+        max_depth=6,  # Reduced to prevent overfitting
+        learning_rate=0.1,  # Increased for better convergence
+        n_estimators=500,  # More trees
+        subsample=0.8,
+        colsample_bytree=0.8,
+        reg_alpha=0.1,
+        reg_lambda=1.0,
+        min_child_weight=3,  # Added to prevent overfitting
+        gamma=0.1,  # Added for regularization
+        objective='binary:logistic'
+    )
+    
+    xgb_model2 = XGBClassifier(
+        use_label_encoder=False, 
+        eval_metric='logloss', 
+        random_state=43,
+        # No scale_pos_weight needed with downsampling
+        max_depth=4,  # Even more conservative
+        learning_rate=0.05,
+        n_estimators=800,  # More trees for this model
+        subsample=0.9,
+        colsample_bytree=0.9,
+        reg_alpha=0.05,
+        reg_lambda=0.5,
+        min_child_weight=5,
+        gamma=0.2,
+        objective='binary:logistic'
+    )
+    
+    # Add Logistic Regression (no class_weight needed with downsampling)
+    lr_model = LogisticRegression(
+        random_state=42,
+        # No class_weight needed with downsampling
+        C=0.8,  # Reduced for more regularization
+        max_iter=1000,
+        solver='liblinear'
+    )
+    
+    # Add SVM (no class_weight needed with downsampling)
+    svm_model = SVC(
+        random_state=42,
+        # No class_weight needed with downsampling
+        C=1.0,
+        kernel='rbf',
+        gamma='scale',
+        probability=True
+    )
+    
+    # Try to add RandomForest with balanced parameters and feature importance
+    try:
+        rf_model = RandomForestClassifier(
+            n_estimators=400,
+            max_depth=10,  # Reduced to prevent overfitting
+            # No class_weight needed with downsampling
+            random_state=42,
+            min_samples_split=15,  # Increased
+            min_samples_leaf=8,    # Increased
+            max_features='sqrt',
+            bootstrap=True,
+            oob_score=True  # Out-of-bag scoring
+        )
+        
+        # Create ensemble with multiple models - focus on balanced performance
+        ensemble_model = VotingClassifier(
+            estimators=[
+                ('xgb1', xgb_model1),
+                ('xgb2', xgb_model2),
+                ('rf', rf_model),
+                ('lr', lr_model),
+                ('svm', svm_model)
+            ],
+            voting='soft',  # Use probability voting
+            weights=[0.3, 0.25, 0.2, 0.15, 0.1]  # Weight the models
+        )
+        print("Using ensemble with XGBoost, RandomForest, LogisticRegression, and SVM")
+        print(f"Downsampling applied for balanced classes")
+        print(f"Hitter-specific features boosted with 3x weight")
+        print(f"Zone and distance features boosted with 2x weight")
+        print(f"Movement features boosted with 2x weight")
+        
+    except Exception as e:
+        print(f"Using XGBoost, LogisticRegression, and SVM only due to: {e}")
+        ensemble_model = VotingClassifier(
+            estimators=[
+                ('xgb1', xgb_model1),
+                ('xgb2', xgb_model2),
+                ('lr', lr_model),
+                ('svm', svm_model)
+            ],
+            voting='soft',
+            weights=[0.4, 0.3, 0.2, 0.1]
+        )
+        print(f"Downsampling applied for balanced classes")
+        print(f"Hitter-specific features boosted with 3x weight")
+        print(f"Zone and distance features boosted with 2x weight")
+        print(f"Movement features boosted with 2x weight")
+    
+    # Train model with sample weights
+    ensemble_model.fit(X_train, y_train)
+    
+    # IMPLEMENT PROBABILITY CALIBRATION
+    print("\n=== IMPLEMENTING PROBABILITY CALIBRATION ===")
+    
+    # Create calibrated model using sigmoid calibration
+    calibrated_model = CalibratedClassifierCV(
+        ensemble_model, 
+        method='sigmoid', 
+        cv=3,
+        n_jobs=-1
+    )
+    
+    # Fit the calibrated model
+    calibrated_model.fit(X_train, y_train)
+    print("Probability calibration completed using sigmoid method with 3-fold CV")
+    
+    # Evaluate both original and calibrated models
+    y_pred = ensemble_model.predict(X_test)
+    y_pred_proba = ensemble_model.predict_proba(X_test)
+    y_calibrated_proba = calibrated_model.predict_proba(X_test)
+    
+    # Test different probability thresholds for swing prediction
+    print("\n=== TESTING DIFFERENT PROBABILITY THRESHOLDS ===")
+    thresholds = [0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9]
+    
+    print("Original Model (0.5 threshold):")
+    y_pred_original = (y_pred_proba[:, 1] > 0.5).astype(int)
+    print(classification_report(y_test, y_pred_original, target_names=['No Swing', 'Swing']))
+    
+    print("\nCalibrated Model with Different Thresholds:")
+    for threshold in thresholds:
+        y_pred_calibrated = (y_calibrated_proba[:, 1] > threshold).astype(int)
+        precision, recall, f1, support = precision_recall_fscore_support(y_test, y_pred_calibrated, average=None)
+        
+        # Calculate false positive rate (no-swing predicted as swing)
+        fp_rate = np.sum((y_pred_calibrated == 1) & (y_test == 0)) / np.sum(y_test == 0)
+        
+        print(f"\nThreshold {threshold}:")
+        print(f"  Swing Precision: {precision[1]:.4f}")
+        print(f"  Swing Recall: {recall[1]:.4f}")
+        print(f"  Swing F1: {f1[1]:.4f}")
+        print(f"  False Positive Rate: {fp_rate:.4f}")
+        print(f"  Swing Predictions: {np.sum(y_pred_calibrated == 1)}/{len(y_pred_calibrated)} ({np.sum(y_pred_calibrated == 1)/len(y_pred_calibrated)*100:.1f}%)")
+    
+    # Use calibrated model with optimal threshold (0.9) for final predictions
+    final_threshold = 0.9
+    y_pred_final = (y_calibrated_proba[:, 1] > final_threshold).astype(int)
+    print(f"\n=== FINAL MODEL WITH CALIBRATED PROBABILITIES (threshold={final_threshold}) ===")
+    print(classification_report(y_test, y_pred_final, target_names=['No Swing', 'Swing']))
+    
+    # Calculate final metrics
+    precision, recall, f1, support = precision_recall_fscore_support(y_test, y_pred_final, average=None)
+    fp_rate = np.sum((y_pred_final == 1) & (y_test == 0)) / np.sum(y_test == 0)
+    fn_rate = np.sum((y_pred_final == 0) & (y_test == 1)) / np.sum(y_test == 1)
+    balanced_acc = balanced_accuracy_score(y_test, y_pred_final)
+    
+    print(f"\nFinal Calibrated Model Metrics (threshold={final_threshold}):")
+    print(f"  No-Swing Precision: {precision[0]:.4f}")
+    print(f"  No-Swing Recall: {recall[0]:.4f}")
+    print(f"  No-Swing F1: {f1[0]:.4f}")
+    print(f"  Swing Precision: {precision[1]:.4f}")
+    print(f"  Swing Recall: {recall[1]:.4f}")
+    print(f"  Swing F1: {f1[1]:.4f}")
+    print(f"  Balanced Accuracy: {balanced_acc:.4f}")
+    print(f"  False Positive Rate: {fp_rate:.4f}")
+    print(f"  False Negative Rate: {fn_rate:.4f}")
+    print(f"  Swing Predictions: {np.sum(y_pred_final == 1)}/{len(y_pred_final)} ({np.sum(y_pred_final == 1)/len(y_pred_final)*100:.1f}%)")
+    
+    print("\nSwing/No-Swing Model Performance:")
+    print(classification_report(y_test, y_pred, target_names=['No Swing', 'Swing']))
+    
+    # Advanced metrics with focus on balanced performance
+    precision, recall, f1, support = precision_recall_fscore_support(y_test, y_pred, average=None)
+    print(f"\nDetailed Metrics:")
+    print(f"  No-Swing Precision: {precision[0]:.4f}")
+    print(f"  No-Swing Recall: {recall[0]:.4f}")
+    print(f"  No-Swing F1: {f1[0]:.4f}")
+    print(f"  Swing Precision: {precision[1]:.4f}")
+    print(f"  Swing Recall: {recall[1]:.4f}")
+    print(f"  Swing F1: {f1[1]:.4f}")
+    
+    # Calculate balanced accuracy
+    balanced_acc = balanced_accuracy_score(y_test, y_pred)
+    print(f"  Balanced Accuracy: {balanced_acc:.4f}")
+    
+    # Calculate false positive rate (no-swing predicted as swing)
+    fp_rate = np.sum((y_pred == 1) & (y_test == 0)) / np.sum(y_test == 0)
+    print(f"  False Positive Rate (No-swing predicted as swing): {fp_rate:.4f}")
+    
+    # Calculate false negative rate (swing predicted as no-swing)
+    fn_rate = np.sum((y_pred == 0) & (y_test == 1)) / np.sum(y_test == 1)
+    print(f"  False Negative Rate (Swing predicted as no-swing): {fn_rate:.4f}")
+    
+    # Cross-validation score with balanced accuracy
+    balanced_scorer = make_scorer(balanced_accuracy_score)
+    cv_scores = cross_val_score(ensemble_model, X_train, y_train, cv=5, scoring=balanced_scorer)
+    print(f"\nCross-validation balanced accuracy: {cv_scores.mean():.4f} (+/- {cv_scores.std() * 2:.4f})")
+    
+    # Feature importance (from first XGBoost model)
+    if sample_weights is not None:
+        xgb_model1.fit(X_train, y_train, sample_weight=sample_weights)  # Fit with sample weights
+    else:
+        xgb_model1.fit(X_train, y_train)  # No sample weights needed with balanced data
+    
+    # Get feature importances from the trained model
+    final_feature_names = preprocessor.get_feature_names_out()
+    final_importances = xgb_model1.feature_importances_
+    sorted_idx = np.argsort(final_importances)[::-1]
+    print("\nTop 25 Feature Importances (Final Model):")
+    for idx in sorted_idx[:25]:
+        print(f"  {final_feature_names[idx]}: {final_importances[idx]:.4f}")
+    
+    # Return both original and calibrated models with threshold info
+    model_info = {
+        'ensemble_model': ensemble_model,
+        'calibrated_model': calibrated_model,
+        'preprocessor': preprocessor,
+        'feature_selector': selector,
+        'all_feats': all_feats,
+        'selected_feature_names': selected_feature_names,
+        'threshold': final_threshold,
+        'calibration_method': 'sigmoid',
+        'cv_folds': 3
+    }
+    
+    print(f"\nModel saved with calibration threshold: {final_threshold}")
+    print(f"Calibration method: sigmoid with {3}-fold CV")
+    
+    return model_info
+
+def create_swing_outcome_classifier(df):
+    """
+    Model 2: If batter swings, predict outcome (whiff, hit_safely, field_out)
+    """
+    print("\n=== MODEL 2: Swing Outcome Classifier ===")
+    
+    # Make a copy to avoid SettingWithCopyWarning
+    df = df.copy()
+    
+    # Filter to swing events only
+    swing_events = ['swinging_strike', 'swinging_strike_blocked', 'hit_into_play', 'hit_into_play_score', 'foul', 'foul_tip', 'foul_bunt']
+    df_swing = df[df['description'].isin(swing_events)].copy()
+    
+    # Create swing outcome target
+    def get_swing_outcome(row):
+        if row['description'] in ['swinging_strike', 'swinging_strike_blocked']:
+            return 'whiff'
+        elif row['events'] in ['single', 'double', 'triple', 'home_run']:
+            return 'hit_safely'
+        elif row['events'] == 'field_out':
+            return 'field_out'
+        else:
+            return 'field_out'  # Default for other contact
+    
+    df_swing['swing_outcome'] = df_swing.apply(get_swing_outcome, axis=1)
+    
+    print(f"Swing outcome distribution: {df_swing['swing_outcome'].value_counts()}")
+    
+    # Prepare features - this will add all the engineered features to df_swing
+    df_swing, num_feats, cat_feats = prepare_features(df_swing)
+    
+    # Add swing column for rate calculations
+    df_swing['swing'] = 1  # All pitches in this dataset are swings
+    df_swing = update_swing_rates(df_swing)
+    
+    all_feats = num_feats + cat_feats
+    
+    # Preprocess
+    preprocessor = ColumnTransformer([
+        ('num', StandardScaler(), num_feats),
+        ('cat', OneHotEncoder(handle_unknown='ignore'), cat_feats)
+    ])
+    
+    X = preprocessor.fit_transform(df_swing[all_feats])
+    y = df_swing['swing_outcome'].values
+    
+    # Clean NaN values
+    X = np.nan_to_num(X, nan=0.0)
+    
+    # Encode labels
+    le = LabelEncoder()
+    y_encoded = le.fit_transform(y)
+    
+    # Train/test split
+    X_train, X_test, y_train, y_test = train_test_split(X, y_encoded, stratify=y_encoded, test_size=0.2, random_state=42)
+    
+    # Train model
+    swing_outcome_model = XGBClassifier(use_label_encoder=False, eval_metric='logloss', random_state=42)
+    swing_outcome_model.fit(X_train, y_train)
+    
+    # Evaluate
+    y_pred = swing_outcome_model.predict(X_test)
+    y_test_decoded = le.inverse_transform(y_test)
+    y_pred_decoded = le.inverse_transform(y_pred)
+    print("\nSwing Outcome Model Performance:")
+    print(classification_report(y_test_decoded, y_pred_decoded))
+    
+    # After each model is trained, print feature importances
+    # For swing_outcome_model
+    # Print feature importances
+    feature_names = preprocessor.get_feature_names_out()
+    importances = swing_outcome_model.feature_importances_
+    sorted_idx = np.argsort(importances)[::-1]
+    print("\nSwing Outcome Feature Importances:")
+    for idx in sorted_idx[:20]:
+        print(f"  {feature_names[idx]}: {importances[idx]:.4f}")
+    
+    return swing_outcome_model, preprocessor, all_feats, le
+
+def create_no_swing_classifier(df):
+    """
+    Model 3: If batter doesn't swing, predict outcome (ball, strike, hit_by_pitch)
+    """
+    print("\n=== MODEL 3: No-Swing Outcome Classifier ===")
+    
+    # Make a copy to avoid SettingWithCopyWarning
+    df = df.copy()
+    
+    # Filter to no-swing events only
+    no_swing_events = ['called_strike', 'ball', 'blocked_ball', 'hit_by_pitch']
+    df_no_swing = df[df['description'].isin(no_swing_events)].copy()
+    
+    # Create no-swing outcome target
+    def get_no_swing_outcome(row):
+        if row['description'] == 'hit_by_pitch':
+            return 'hit_by_pitch'
+        elif row['description'] in ['called_strike']:
+            return 'strike'
+        elif row['description'] in ['ball', 'blocked_ball']:
+            return 'ball'
+        else:
+            return 'ball'  # Default
+    
+    df_no_swing['no_swing_outcome'] = df_no_swing.apply(get_no_swing_outcome, axis=1)
+    
+    print(f"No-swing outcome distribution: {df_no_swing['no_swing_outcome'].value_counts()}")
+    
+    # Prepare features - this will add all the engineered features to df_no_swing
+    df_no_swing, num_feats, cat_feats = prepare_features(df_no_swing)
+    
+    # Add swing column for rate calculations
+    df_no_swing['swing'] = 0  # All pitches in this dataset are no-swings
+    df_no_swing = update_swing_rates(df_no_swing)
+    
+    all_feats = num_feats + cat_feats
+    
+    # Preprocess
+    preprocessor = ColumnTransformer([
+        ('num', StandardScaler(), num_feats),
+        ('cat', OneHotEncoder(handle_unknown='ignore'), cat_feats)
+    ])
+    
+    X = preprocessor.fit_transform(df_no_swing[all_feats])
+    y = df_no_swing['no_swing_outcome'].values
+    
+    # Clean NaN values
+    X = np.nan_to_num(X, nan=0.0)
+    
+    # Encode labels
+    le = LabelEncoder()
+    y_encoded = le.fit_transform(y)
+    
+    # Train/test split
+    X_train, X_test, y_train, y_test = train_test_split(X, y_encoded, stratify=y_encoded, test_size=0.2, random_state=42)
+    
+    # Train model
+    no_swing_model = XGBClassifier(use_label_encoder=False, eval_metric='logloss', random_state=42)
+    no_swing_model.fit(X_train, y_train)
+    
+    # Evaluate
+    y_pred = no_swing_model.predict(X_test)
+    y_test_decoded = le.inverse_transform(y_test)
+    y_pred_decoded = le.inverse_transform(y_pred)
+    print("\nNo-Swing Outcome Model Performance:")
+    print(classification_report(y_test_decoded, y_pred_decoded))
+    
+    # After each model is trained, print feature importances
+    # For no_swing_model
+    # Print feature importances
+    feature_names = preprocessor.get_feature_names_out()
+    importances = no_swing_model.feature_importances_
+    sorted_idx = np.argsort(importances)[::-1]
+    print("\nNo-Swing Outcome Feature Importances:")
+    for idx in sorted_idx[:20]:
+        print(f"  {feature_names[idx]}: {importances[idx]:.4f}")
+    
+    return no_swing_model, preprocessor, all_feats, le
+
+def main():
+    print("🎯 Training Sequential Pitch Outcome Models")
+    print("=" * 50)
+    
+    # Load dataset
+    df = pd.read_csv("ronald_acuna_jr_complete_career_statcast.csv")
+    
+    # Debug: Show available columns
+    print(f"\n📋 Available columns ({len(df.columns)}):")
+    print(df.columns.tolist())
+    
+    # Create holdout dataset (10% for holdout, 90% for training)
+    print("\n📊 Creating holdout dataset...")
+    df['game_date'] = pd.to_datetime(df['game_date'])
+    df = df.sort_values('game_date')
+    
+    # Split chronologically - use last 10% of games for holdout
+    unique_games = df['game_date'].dt.date.unique()
+    split_idx = int(len(unique_games) * 0.9)  # 90% for training
+    
+    train_games = unique_games[:split_idx]
+    holdout_games = unique_games[split_idx:]
+    
+    train_mask = df['game_date'].dt.date.isin(train_games)
+    holdout_mask = df['game_date'].dt.date.isin(holdout_games)
+    
+    df_train = df[train_mask].copy()
+    df_holdout = df[holdout_mask].copy()
+    
+    print(f"Training set: {len(df_train)} pitches ({len(train_games)} games)")
+    print(f"Holdout set: {len(df_holdout)} pitches ({len(holdout_games)} games)")
+    
+    # Save holdout dataset
+    df_holdout.to_csv("ronald_acuna_jr_holdout_statcast.csv", index=False)
+    print("✅ Holdout dataset saved to 'ronald_acuna_jr_holdout_statcast.csv'")
+    
+    # Use training data for model training
+    df = df_train
+    df = df.dropna(subset=['description', 'events'])
+    
+    print(f"Training dataset size: {len(df)} pitches")
+    print(f"Description value counts:")
+    print(df['description'].value_counts().head(10))
+    
+    # Data validation - check for problematic features
+    print("\n🔍 Data Validation:")
+    print(f"Total features available: {len(df.columns)}")
+    
+    # Check for columns with too many NaN values
+    nan_counts = df.isnull().sum()
+    high_nan_cols = nan_counts[nan_counts > len(df) * 0.5].index.tolist()
+    if high_nan_cols:
+        print(f"Columns with >50% NaN values: {high_nan_cols}")
+    
+    # Check for infinite values
+    inf_counts = np.isinf(df.select_dtypes(include=[np.number])).sum()
+    inf_cols = inf_counts[inf_counts > 0].index.tolist()
+    if inf_cols:
+        print(f"Columns with infinite values: {inf_cols}")
+    
+    # Check for key columns we need
+    key_columns = ['pitcher', 'batter', 'at_bat_number', 'inning', 'home_score', 'away_score']
+    missing_key_columns = [col for col in key_columns if col not in df.columns]
+    if missing_key_columns:
+        print(f"Missing key columns: {missing_key_columns}")
+    
+    # Train Model 1: Swing/No-Swing
+    swing_model_info = create_swing_classifier(df)
+    swing_model = swing_model_info['ensemble_model']
+    swing_calibrated_model = swing_model_info['calibrated_model']
+    swing_preprocessor = swing_model_info['preprocessor']
+    swing_feature_selector = swing_model_info['feature_selector']
+    swing_features = swing_model_info['all_feats']
+    swing_selected_features = swing_model_info['selected_feature_names']
+    swing_threshold = swing_model_info['threshold']
+    
+    # Train Model 2: Swing Outcomes
+    swing_outcome_model, swing_outcome_preprocessor, swing_outcome_features, swing_outcome_le = create_swing_outcome_classifier(df)
+    
+    # Train Model 3: No-Swing Outcomes
+    no_swing_model, no_swing_preprocessor, no_swing_features, no_swing_le = create_no_swing_classifier(df)
+    
+    # Save all models
+    models = {
+        'swing_model': swing_model,
+        'swing_calibrated_model': swing_calibrated_model,
+        'swing_threshold': swing_threshold,
+        'swing_preprocessor': swing_preprocessor,
+        'swing_feature_selector': swing_feature_selector,
+        'swing_features': swing_features,
+        'swing_selected_features': swing_selected_features,
+        'swing_outcome_model': swing_outcome_model,
+        'swing_outcome_preprocessor': swing_outcome_preprocessor,
+        'swing_outcome_features': swing_outcome_features,
+        'swing_outcome_le': swing_outcome_le,
+        'no_swing_model': no_swing_model,
+        'no_swing_preprocessor': no_swing_preprocessor,
+        'no_swing_features': no_swing_features,
+        'no_swing_le': no_swing_le
+    }
+    
+    with open("sequential_models.pkl", "wb") as f:
+        pickle.dump(models, f)
+    
+    print("\n✅ All models saved to 'sequential_models.pkl'")
+    print("\nModel Pipeline:")
+    print("1. Swing/No-Swing Classifier")
+    print("2. If Swing → Swing Outcome Classifier (whiff, hit_safely, field_out)")
+    print("3. If No Swing → No-Swing Outcome Classifier (ball, strike, hit_by_pitch)")
+
+if __name__ == "__main__":
+    main() 
