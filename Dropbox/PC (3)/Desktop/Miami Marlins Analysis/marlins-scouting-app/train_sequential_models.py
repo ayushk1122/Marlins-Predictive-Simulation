@@ -2,7 +2,7 @@ import pandas as pd
 import numpy as np
 from sklearn.preprocessing import StandardScaler, OneHotEncoder, LabelEncoder
 from sklearn.compose import ColumnTransformer
-from sklearn.model_selection import train_test_split, cross_val_score
+from sklearn.model_selection import train_test_split, cross_val_score, GridSearchCV
 from sklearn.metrics import classification_report, accuracy_score, precision_recall_fscore_support, f1_score, recall_score
 from sklearn.utils.class_weight import compute_sample_weight
 from sklearn.utils import resample
@@ -33,6 +33,11 @@ except Exception as e:
     print(f"Unexpected error importing SMOTE: {e}")
     SMOTE_AVAILABLE = False
 
+# Neural network imports removed - focusing on XGBoost models only
+
+# Global variable for situational thresholds
+SITUATIONAL_THRESHOLDS = {}
+
 # Create global label encoder for consistent encoding/decoding
 def create_global_label_encoder():
     """Create a label encoder that knows all possible values"""
@@ -54,6 +59,50 @@ logging.getLogger('xgboost').setLevel(logging.ERROR)
 warnings.filterwarnings('ignore', category=UserWarning, module='sklearn')
 warnings.filterwarnings('ignore', category=RuntimeWarning, module='sklearn')
 warnings.filterwarnings('ignore', category=FutureWarning, module='sklearn')
+
+def load_babip_data():
+    """Load BABIP data from the calculate_pitch_type_zone_batting_averages.py script"""
+    try:
+        # Try to load the CSV file if it exists
+        babip_df = pd.read_csv('pitch_type_zone_batting_averages.csv')
+        print(f"✓ Loaded BABIP data with {len(babip_df)} pitch type x zone combinations")
+        
+        # Create a dictionary for quick lookup
+        babip_lookup = {}
+        for _, row in babip_df.iterrows():
+            key = (row['Pitch Type'], row['Zone'])
+            babip_lookup[key] = {
+                'batting_average_bip': row['Batting Average (BIP)'],
+                'whiff_rate': row['Whiff Rate'],
+                'field_out_rate_bip': row['Field Out Rate (BIP)'],
+                'balls_in_play': row['Balls in Play'],
+                'total_swings': row['Total Swings'],
+                'total_whiffs': row['Total Whiffs']
+            }
+        
+        return babip_lookup
+    except FileNotFoundError:
+        print("⚠️ BABIP data file not found. Run calculate_pitch_type_zone_batting_averages.py first.")
+        return {}
+    except Exception as e:
+        print(f"✗ Error loading BABIP data: {e}")
+        return {}
+
+def get_babip_features(pitch_type, zone, babip_lookup):
+    """Get BABIP and whiff rate features for a specific pitch type and zone"""
+    key = (pitch_type, zone)
+    if key in babip_lookup:
+        return babip_lookup[key]
+    else:
+        # Return default values if no data available
+        return {
+            'batting_average_bip': 0.25,  # Default BABIP
+            'whiff_rate': 0.35,           # Default whiff rate
+            'field_out_rate_bip': 0.40,   # Default field out rate
+            'balls_in_play': 0,           # No balls in play data
+            'total_swings': 0,            # No swing data
+            'total_whiffs': 0             # No whiff data
+        }
 
 def calculate_zone(plate_x, plate_z):
     """
@@ -732,6 +781,32 @@ def prepare_features(df):
     acuna_features_df = pd.DataFrame([acuna_features] * len(df), index=df.index)
     df = pd.concat([df, acuna_features_df], axis=1)
     
+    # NEW: Add BABIP features for each pitch type and zone combination
+    print("Loading BABIP data for outcome prediction features...")
+    babip_lookup = load_babip_data()
+    
+    if babip_lookup:
+        # Add BABIP features for each pitch
+        babip_features = []
+        for idx, row in df.iterrows():
+            pitch_type = row['pitch_type']
+            zone = row['zone']
+            babip_data = get_babip_features(pitch_type, zone, babip_lookup)
+            babip_features.append(babip_data)
+        
+        # Convert to DataFrame and add to main DataFrame
+        babip_df = pd.DataFrame(babip_features, index=df.index)
+        df = pd.concat([df, babip_df], axis=1)
+        
+        print(f"Added BABIP features for {len(babip_lookup)} pitch type x zone combinations")
+    else:
+        # Add default BABIP features if no data available
+        df['batting_average_bip'] = 0.25
+        df['whiff_rate'] = 0.35
+        df['field_out_rate_bip'] = 0.40
+        df['balls_in_play'] = 0
+        print("Added default BABIP features (no BABIP data available)")
+    
     # NEW: Add proxy contact features that combine zone location with swing rates
     # These are especially useful for outcome prediction
     df['zone_heart_contact'] = df['zone_heart'] * df['acuna_zone_heart_swing_rate']
@@ -814,7 +889,9 @@ def prepare_features(df):
         'zone_heart_contact', 'zone_corner_contact', 'zone_shadow_contact',
         'zone_overall_contact', 'outside_zone_contact',
         'fastball_zone_contact', 'breaking_zone_contact', 'offspeed_zone_contact',
-        'pressure_zone_contact', 'opportunity_zone_contact', 'two_strikes_zone_contact'
+        'pressure_zone_contact', 'opportunity_zone_contact', 'two_strikes_zone_contact',
+        # NEW: BABIP and whiff rate features for outcome prediction
+        'batting_average_bip', 'whiff_rate', 'field_out_rate_bip', 'balls_in_play', 'total_swings', 'total_whiffs'
     ]
     
     cat_feats = ['pitch_type', 'p_throws', 'if_fielding_alignment', 'of_fielding_alignment', 'stand', 'home_team', 'zone_quadrant', 'location_quadrant', 'count_advantage']

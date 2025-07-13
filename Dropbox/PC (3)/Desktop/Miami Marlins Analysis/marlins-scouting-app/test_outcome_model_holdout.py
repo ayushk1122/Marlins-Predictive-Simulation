@@ -309,6 +309,50 @@ def calculate_pitcher_features(pitcher_df):
     print(f"Calculated {len(pitcher_features)} pitcher features")
     return pitcher_features
 
+def load_babip_data():
+    """Load BABIP data from the calculate_pitch_type_zone_batting_averages.py script"""
+    try:
+        # Try to load the CSV file if it exists
+        babip_df = pd.read_csv('pitch_type_zone_batting_averages.csv')
+        print(f"✓ Loaded BABIP data with {len(babip_df)} pitch type x zone combinations")
+        
+        # Create a dictionary for quick lookup
+        babip_lookup = {}
+        for _, row in babip_df.iterrows():
+            key = (row['Pitch Type'], row['Zone'])
+            babip_lookup[key] = {
+                'batting_average_bip': row['Batting Average (BIP)'],
+                'whiff_rate': row['Whiff Rate'],
+                'field_out_rate_bip': row['Field Out Rate (BIP)'],
+                'balls_in_play': row['Balls in Play'],
+                'total_swings': row['Total Swings'],
+                'total_whiffs': row['Total Whiffs']
+            }
+        
+        return babip_lookup
+    except FileNotFoundError:
+        print("⚠️ BABIP data file not found. Run calculate_pitch_type_zone_batting_averages.py first.")
+        return {}
+    except Exception as e:
+        print(f"✗ Error loading BABIP data: {e}")
+        return {}
+
+def get_babip_features(pitch_type, zone, babip_lookup):
+    """Get BABIP and whiff rate features for a specific pitch type and zone"""
+    key = (pitch_type, zone)
+    if key in babip_lookup:
+        return babip_lookup[key]
+    else:
+        # Return default values if no data available
+        return {
+            'batting_average_bip': 0.25,  # Default BABIP
+            'whiff_rate': 0.35,           # Default whiff rate
+            'field_out_rate_bip': 0.40,   # Default field out rate
+            'balls_in_play': 0,           # No balls in play data
+            'total_swings': 0,            # No swing data
+            'total_whiffs': 0             # No whiff data
+        }
+
 def prepare_outcome_features(df, hitter_features=None, pitcher_features=None):
     """Prepare features for outcome prediction - focusing only on hitting events"""
     # Focus only on hitting events (not defensive events like stolen bases, pickoffs, etc.)
@@ -627,200 +671,42 @@ def engineer_features(df, hitter_features=None, pitcher_features=None):
     # 1. Breaking ball high
     df['breaking_ball_high'] = df['is_breaking_ball'] * df['high_pitch']
     
-    # 2. Close game (simplified - would need game context)
-    df['close_game'] = 0.0  # Default, would need game score data
+    # NEW: Add BABIP features for each pitch type and zone combination
+    print("Loading BABIP data for outcome prediction features...")
+    babip_lookup = load_babip_data()
     
-    # 3. Corner pitch
-    df['corner_pitch'] = ((df['plate_x'].abs() >= 0.7) | (df['plate_z'] >= 3.5) | (df['plate_z'] <= 1.5)).astype(int)
-    
-    # 4-7. Count-specific rates (will be calculated from career data)
-    df['count_field_out_rate'] = 0.0
-    df['count_hit_rate'] = 0.0
-    df['count_swing_rate_adjustment'] = 0.0
-    df['count_whiff_rate'] = 0.0
-    
-    # 8-16. Early count features
-    df['early_count'] = (df['count_total'] <= 2).astype(int)
-    df['early_count_breaking_penalty'] = df['early_count'] * df['is_breaking_ball'] * 0.1
-    df['early_count_high_vel_penalty'] = df['early_count'] * df['high_velocity'] * 0.1
-    df['early_count_location_penalty'] = df['early_count'] * df['far_from_zone'] * 0.1
-    df['early_count_low_vel_penalty'] = df['early_count'] * df['low_velocity'] * 0.1
-    df['early_count_offspeed_penalty'] = df['early_count'] * df['is_offspeed'] * 0.1
-    df['early_count_outside_penalty'] = df['early_count'] * df['outside_pitch'] * 0.1
-    df['early_count_penalty'] = df['early_count'] * 0.1
-    df['early_count_zone_penalty'] = df['early_count'] * df['zone_distance'] * 0.1
-    
-    # 17. Extreme location
-    df['extreme_location'] = ((df['plate_x'].abs() > 1.2) | (df['plate_z'] > 4.0) | (df['plate_z'] < 1.0)).astype(int)
-    
-    # 18-19. First/last pitch
-    df['first_pitch'] = (df['count_total'] == 0).astype(int)
-    df['last_pitch'] = (df['count_total'] >= 5).astype(int)
-    
-    # 20-22. Heart pitch and movement features
-    df['heart_pitch'] = ((df['plate_x'].abs() <= 0.5) & (df['plate_z'] >= 2.0) & (df['plate_z'] <= 3.0)).astype(int)
-    df['high_horizontal_movement'] = (df['movement_magnitude'] > 10).astype(int)
-    df['high_movement_fastball'] = df['is_fastball'] * df['high_movement']
-    df['high_vertical_movement'] = (df['movement_magnitude'] > 8).astype(int)
-    
-    # 23-24. Movement features
-    df['horizontal_movement'] = df['movement_magnitude']  # Simplified
-    df['vertical_movement'] = df['movement_magnitude']  # Simplified
-    
-    # 25. Inning late
-    df['inning_late'] = 0.0  # Would need inning data
-    
-    # 26-27. Late count and low movement breaking
-    df['late_count'] = (df['count_total'] >= 4).astype(int)
-    df['low_movement_breaking'] = df['is_breaking_ball'] * (df['movement_magnitude'] < 4).astype(int)
-    
-    # 28-29. Middle count and movement ratio
-    df['middle_count'] = ((df['count_total'] >= 2) & (df['count_total'] <= 3)).astype(int)
-    df['movement_ratio'] = df['movement_magnitude'] / (df['release_speed'] + 0.1)
-    
-    # 30. Offspeed low
-    df['offspeed_low'] = df['is_offspeed'] * df['low_pitch']
-    
-    # 31-32. Pitch in at bat and pitch type change
-    df['pitch_in_at_bat'] = df['count_total']  # Simplified
-    df['pitch_type_change'] = 0.0  # Would need sequence data
-    
-    # 33-35. Pitch type rates
-    df['pitch_type_field_out_rate'] = 0.0
-    df['pitch_type_hit_rate'] = 0.0
-    df['pitch_type_whiff_rate'] = 0.0
-    
-    # 36-37. Plate location normalized movement
-    df['plate_x_norm_x_movement'] = df['plate_x'] * df['movement_magnitude']
-    df['plate_z_norm_x_movement'] = df['plate_z'] * df['movement_magnitude']
-    
-    # 38-41. Pressure features
-    df['pressure_count'] = (df['strikes'] >= 2).astype(int)
-    df['pressure_field_out_rate'] = 0.0
-    df['pressure_hit_rate'] = 0.0
-    df['pressure_whiff_rate'] = 0.0
-    
-    # 42-43. Shadow pitch and unexpected movement
-    df['shadow_pitch'] = ((df['plate_x'].abs() <= 1.0) & (df['plate_z'] >= 1.2) & (df['plate_z'] <= 3.8) & 
-                          ~((df['plate_x'].abs() <= 0.7) & (df['plate_z'] >= 1.5) & (df['plate_z'] <= 3.5))).astype(int)
-    df['unexpected_movement'] = np.abs(df['movement_magnitude'] - df['expected_movement'])
-    
-    # 44. Velocity drop
-    df['velocity_drop'] = (df['release_speed'] < df['release_speed'].mean() - 5).astype(int)
-    
-    # 45-52. Zone-specific features
-    df['zone_center_distance'] = np.sqrt(df['plate_x']**2 + (df['plate_z'] - 2.5)**2)
-    df['zone_corner'] = ((df['plate_x'].abs() >= 0.7) | (df['plate_z'] >= 3.5) | (df['plate_z'] <= 1.5)).astype(int)
-    df['zone_field_out_rate'] = 0.0
-    df['zone_heart'] = ((df['plate_x'].abs() <= 0.5) & (df['plate_z'] >= 2.0) & (df['plate_z'] <= 3.0)).astype(int)
-    df['zone_hit_rate'] = 0.0
-    df['zone_shadow'] = df['shadow_pitch']
-    df['zone_whiff_rate'] = 0.0
-    
-    # Hitter-specific features (using actual career data)
-    if hitter_features:
-        for feature_name, value in hitter_features.items():
-            df[feature_name] = value
-        
-        # Add comprehensive count features dynamically for each pitch
-        print("Adding comprehensive count features to each pitch...")
-        
-        # Extract count features from hitter_features (remove 'acuna_' prefix)
-        count_features = {k.replace('acuna_', ''): v for k, v in hitter_features.items() 
-                         if any(x in k for x in ['swing_rate', 'weighted_swing_rate'])}
-        
-        # Calculate current count features for each pitch
-        current_count_features_list = []
+    if babip_lookup:
+        # Add BABIP features for each pitch
+        babip_features = []
         for idx, row in df.iterrows():
-            current_count_features = get_count_features_for_pitch(
-                row['balls'], row['strikes'], row['pitch_type'], count_features
-            )
-            current_count_features_list.append(current_count_features)
+            pitch_type = row['pitch_type']
+            zone = row['zone']
+            babip_data = get_babip_features(pitch_type, zone, babip_lookup)
+            babip_features.append(babip_data)
         
-        # Add current count features to dataframe
-        current_count_df = pd.DataFrame(current_count_features_list, index=df.index)
-        df = pd.concat([df, current_count_df], axis=1)
+        # Convert to DataFrame and add to main DataFrame
+        babip_df = pd.DataFrame(babip_features, index=df.index)
+        df = pd.concat([df, babip_df], axis=1)
         
-        print(f"Added {len(current_count_features_list[0])} count-specific features per pitch")
-        
-        # NEW: Add proxy contact features that combine zone location with swing rates
-        # These are especially useful for outcome prediction
-        df['zone_heart_contact'] = df['zone_heart'] * df['acuna_zone_heart_swing_rate']
-        df['zone_corner_contact'] = df['zone_corner'] * df['acuna_zone_corner_swing_rate']
-        df['zone_shadow_contact'] = df['zone_shadow'] * df['acuna_zone_shadow_swing_rate']
-        df['zone_overall_contact'] = df['in_strike_zone'] * df['acuna_zone_swing_rate']
-        df['outside_zone_contact'] = df['far_from_zone'] * df['acuna_outside_swing_rate']
-        
-        # Additional contact features for different pitch types
-        df['fastball_zone_contact'] = df['is_fastball'] * df['zone_overall_contact']
-        df['breaking_zone_contact'] = df['is_breaking_ball'] * df['zone_overall_contact']
-        df['offspeed_zone_contact'] = df['is_offspeed'] * df['zone_overall_contact']
-        
-        # Contact features for different count situations
-        df['pressure_zone_contact'] = df['pressure_situation'] * df['zone_overall_contact']
-        df['opportunity_zone_contact'] = df['ahead_in_count'] * df['zone_overall_contact']
-        df['two_strikes_zone_contact'] = df['two_strikes'] * df['zone_overall_contact']
-        
+        print(f"Added BABIP features for {len(babip_lookup)} pitch type x zone combinations")
     else:
-        # Fallback to zeros if career data not available
-        df['acuna_fastball_swing_rate'] = 0.0
-        df['acuna_breaking_swing_rate'] = 0.0
-        df['acuna_offspeed_swing_rate'] = 0.0
-        df['acuna_zone_swing_rate'] = 0.0
-        df['acuna_outside_swing_rate'] = 0.0
-        df['acuna_high_swing_rate'] = 0.0
-        df['acuna_low_swing_rate'] = 0.0
-        df['acuna_ahead_swing_rate'] = 0.0
-        df['acuna_behind_swing_rate'] = 0.0
-        df['acuna_two_strikes_swing_rate'] = 0.0
-        df['acuna_full_count_swing_rate'] = 0.0
-        df['acuna_high_vel_swing_rate'] = 0.0
-        df['acuna_low_vel_swing_rate'] = 0.0
-        df['acuna_high_movement_swing_rate'] = 0.0
-        df['acuna_low_movement_swing_rate'] = 0.0
-        df['acuna_late_inning_swing_rate'] = 0.0
-        df['acuna_close_game_swing_rate'] = 0.0
-        
-        # Default count features
-        df['current_count_overall_swing_rate'] = 0.0
-        df['current_count_pitch_swing_rate'] = 0.0
-        df['current_count_weighted_swing_rate'] = 0.0
-        df['current_count_pitch_weighted_swing_rate'] = 0.0
-        df['advantage_count_weight'] = 0.0
-        df['acuna_first_pitch_swing_rate'] = 0.0
-        df['acuna_last_pitch_swing_rate'] = 0.0
-        df['acuna_pitch_type_change_swing_rate'] = 0.0
-        df['acuna_velocity_drop_swing_rate'] = 0.0
-        df['acuna_velocity_surge_swing_rate'] = 0.0
-        df['acuna_location_extreme_swing_rate'] = 0.0
-        df['acuna_location_heart_swing_rate'] = 0.0
-        df['acuna_pressure_swing_rate'] = 0.0
-        df['acuna_opportunity_swing_rate'] = 0.0
-        df['acuna_zone_corner_swing_rate'] = 0.0
-        df['acuna_zone_shadow_swing_rate'] = 0.0
-        df['acuna_zone_heart_swing_rate'] = 0.0
-        
-        # NEW: Add proxy contact features with default values when no career data
-        df['zone_heart_contact'] = df['zone_heart'] * 0.0  # Default to 0 when no career data
-        df['zone_corner_contact'] = df['zone_corner'] * 0.0
-        df['zone_shadow_contact'] = df['zone_shadow'] * 0.0
-        df['zone_overall_contact'] = df['in_strike_zone'] * 0.0
-        df['outside_zone_contact'] = df['far_from_zone'] * 0.0
-        
-        # Additional contact features for different pitch types
-        df['fastball_zone_contact'] = df['is_fastball'] * df['zone_overall_contact']
-        df['breaking_zone_contact'] = df['is_breaking_ball'] * df['zone_overall_contact']
-        df['offspeed_zone_contact'] = df['is_offspeed'] * df['zone_overall_contact']
-        
-        # Contact features for different count situations
-        df['pressure_zone_contact'] = df['pressure_situation'] * df['zone_overall_contact']
-        df['opportunity_zone_contact'] = df['ahead_in_count'] * df['zone_overall_contact']
-        df['two_strikes_zone_contact'] = df['two_strikes'] * df['zone_overall_contact']
+        # Add default BABIP features if no data available
+        df['batting_average_bip'] = 0.25
+        df['whiff_rate'] = 0.35
+        df['field_out_rate_bip'] = 0.40
+        df['balls_in_play'] = 0
+        df['total_swings'] = 0
+        df['total_whiffs'] = 0
+        print("Added default BABIP features (no BABIP data available)")
     
-    print(f"Engineered {len(df.columns)} features")
-    print(f"Output dataset size: {len(df)} pitches")
+    # Check for data expansion
     if len(df) != original_size:
-        print(f"WARNING: Dataset size changed from {original_size} to {len(df)} pitches!")
+        print(f"⚠️ WARNING: Dataset size changed from {original_size} to {len(df)} pitches")
+        print("This may indicate data duplication or feature engineering issues")
+    
+    print(f"Feature engineering complete. Final dataset size: {len(df)} pitches")
+    print(f"Total features: {len(df.columns)}")
+    
     return df
 
 def analyze_predictions(df, y_true, y_pred, probabilities):
