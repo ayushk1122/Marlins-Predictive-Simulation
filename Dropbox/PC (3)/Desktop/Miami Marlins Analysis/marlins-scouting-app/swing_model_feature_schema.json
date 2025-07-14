@@ -1,0 +1,1484 @@
+[
+  {
+    "feature_name": "num__release_speed",
+    "source": "average lookup/derived",
+    "transformation": "scaled",
+    "default": "fill with 0 if missing"
+  },
+  {
+    "feature_name": "num__release_spin_rate",
+    "source": "average lookup/derived",
+    "transformation": "scaled",
+    "default": "fill with 0 if missing"
+  },
+  {
+    "feature_name": "num__spin_axis",
+    "source": "average lookup/derived",
+    "transformation": "scaled",
+    "default": "fill with 0 if missing"
+  },
+  {
+    "feature_name": "num__release_extension",
+    "source": "average lookup/derived",
+    "transformation": "scaled",
+    "default": "fill with 0 if missing"
+  },
+  {
+    "feature_name": "num__release_pos_x",
+    "source": "average lookup/derived",
+    "transformation": "scaled",
+    "default": "fill with 0 if missing"
+  },
+  {
+    "feature_name": "num__release_pos_y",
+    "source": "average lookup/derived",
+    "transformation": "scaled",
+    "default": "fill with 0 if missing"
+  },
+  {
+    "feature_name": "num__release_pos_z",
+    "source": "average lookup/derived",
+    "transformation": "scaled",
+    "default": "fill with 0 if missing"
+  },
+  {
+    "feature_name": "num__vx0",
+    "source": "average lookup/derived",
+    "transformation": "scaled",
+    "default": "fill with 0 if missing"
+  },
+  {
+    "feature_name": "num__vy0",
+    "source": "average lookup/derived",
+    "transformation": "scaled",
+    "default": "fill with 0 if missing"
+  },
+  {
+    "feature_name": "num__vz0",
+    "source": "average lookup/derived",
+    "transformation": "scaled",
+    "default": "fill with 0 if missing"
+  },
+  {
+    "feature_name": "num__pfx_x",
+    "source": "average lookup/derived",
+    "transformation": "scaled",
+    "default": "fill with 0 if missing"
+  },
+  {
+    "feature_name": "num__pfx_z",
+    "source": "average lookup/derived",
+    "transformation": "scaled",
+    "default": "fill with 0 if missing"
+  },
+  {
+    "feature_name": "num__plate_x",
+    "source": "UI input",
+    "transformation": "scaled",
+    "default": "fill with 0 if missing"
+  },
+  {
+    "feature_name": "num__plate_z",
+    "source": "UI input",
+    "transformation": "scaled",
+    "default": "fill with 0 if missing"
+  },
+  {
+    "feature_name": "num__sz_top",
+    "source": "average lookup/derived",
+    "transformation": "scaled",
+    "default": "fill with 0 if missing"
+  },
+  {
+    "feature_name": "num__sz_bot",
+    "source": "average lookup/derived",
+    "transformation": "scaled",
+    "default": "fill with 0 if missing"
+  },
+  {
+    "feature_name": "num__zone",
+    "source": "average lookup/derived",
+    "transformation": "scaled",
+    "default": "fill with 0 if missing"
+  },
+  {
+    "feature_name": "num__api_break_z_with_gravity",
+    "source": "average lookup/derived",
+    "transformation": "scaled",
+    "default": "fill with 0 if missing"
+  },
+  {
+    "feature_name": "num__api_break_x_batter_in",
+    "source": "average lookup/derived",
+    "transformation": "scaled",
+    "default": "fill with 0 if missing"
+  },
+  {
+    "feature_name": "num__api_break_x_arm",
+    "source": "average lookup/derived",
+    "transformation": "scaled",
+    "default": "fill with 0 if missing"
+  },
+  {
+    "feature_name": "num__arm_angle",
+    "source": "average lookup/derived",
+    "transformation": "scaled",
+    "default": "fill with 0 if missing"
+  },
+  {
+    "feature_name": "num__balls",
+    "source": "UI input",
+    "transformation": "scaled",
+    "default": "fill with 0 if missing"
+  },
+  {
+    "feature_name": "num__strikes",
+    "source": "UI input",
+    "transformation": "scaled",
+    "default": "fill with 0 if missing"
+  },
+  {
+    "feature_name": "num__spin_dir",
+    "source": "average lookup/derived",
+    "transformation": "scaled",
+    "default": "fill with 0 if missing"
+  },
+  {
+    "feature_name": "num__spin_rate_deprecated",
+    "source": "average lookup/derived",
+    "transformation": "scaled",
+    "default": "fill with 0 if missing"
+  },
+  {
+    "feature_name": "num__break_angle_deprecated",
+    "source": "average lookup/derived",
+    "transformation": "scaled",
+    "default": "fill with 0 if missing"
+  },
+  {
+    "feature_name": "num__break_length_deprecated",
+    "source": "average lookup/derived",
+    "transformation": "scaled",
+    "default": "fill with 0 if missing"
+  },
+  {
+    "feature_name": "num__effective_speed",
+    "source": "average lookup/derived",
+    "transformation": "scaled",
+    "default": "fill with 0 if missing"
+  },
+  {
+    "feature_name": "num__age_pit",
+    "source": "average lookup/derived",
+    "transformation": "scaled",
+    "default": "fill with 0 if missing"
+  },
+  {
+    "feature_name": "num__zone_distance",
+    "source": "derived",
+    "transformation": "scaled",
+    "default": "fill with 0 if missing"
+  },
+  {
+    "feature_name": "num__movement_magnitude",
+    "source": "derived",
+    "transformation": "scaled",
+    "default": "fill with 0 if missing"
+  },
+  {
+    "feature_name": "num__plate_x_norm_x_movement",
+    "source": "average lookup/derived",
+    "transformation": "scaled",
+    "default": "fill with 0 if missing"
+  },
+  {
+    "feature_name": "num__plate_z_norm_x_movement",
+    "source": "average lookup/derived",
+    "transformation": "scaled",
+    "default": "fill with 0 if missing"
+  },
+  {
+    "feature_name": "num__count_pressure",
+    "source": "derived",
+    "transformation": "scaled",
+    "default": "fill with 0 if missing"
+  },
+  {
+    "feature_name": "num__count_total",
+    "source": "derived",
+    "transformation": "scaled",
+    "default": "fill with 0 if missing"
+  },
+  {
+    "feature_name": "num__behind_in_count",
+    "source": "average lookup/derived",
+    "transformation": "scaled",
+    "default": "fill with 0 if missing"
+  },
+  {
+    "feature_name": "num__ahead_in_count",
+    "source": "average lookup/derived",
+    "transformation": "scaled",
+    "default": "fill with 0 if missing"
+  },
+  {
+    "feature_name": "num__two_strikes",
+    "source": "UI input",
+    "transformation": "scaled",
+    "default": "fill with 0 if missing"
+  },
+  {
+    "feature_name": "num__three_balls",
+    "source": "UI input",
+    "transformation": "scaled",
+    "default": "fill with 0 if missing"
+  },
+  {
+    "feature_name": "num__in_strike_zone",
+    "source": "average lookup/derived",
+    "transformation": "scaled",
+    "default": "fill with 0 if missing"
+  },
+  {
+    "feature_name": "num__far_from_zone",
+    "source": "average lookup/derived",
+    "transformation": "scaled",
+    "default": "fill with 0 if missing"
+  },
+  {
+    "feature_name": "num__high_pitch",
+    "source": "average lookup/derived",
+    "transformation": "scaled",
+    "default": "fill with 0 if missing"
+  },
+  {
+    "feature_name": "num__low_pitch",
+    "source": "average lookup/derived",
+    "transformation": "scaled",
+    "default": "fill with 0 if missing"
+  },
+  {
+    "feature_name": "num__inside_pitch",
+    "source": "average lookup/derived",
+    "transformation": "scaled",
+    "default": "fill with 0 if missing"
+  },
+  {
+    "feature_name": "num__outside_pitch",
+    "source": "average lookup/derived",
+    "transformation": "scaled",
+    "default": "fill with 0 if missing"
+  },
+  {
+    "feature_name": "num__is_fastball",
+    "source": "average lookup/derived",
+    "transformation": "scaled",
+    "default": "fill with 0 if missing"
+  },
+  {
+    "feature_name": "num__is_breaking_ball",
+    "source": "average lookup/derived",
+    "transformation": "scaled",
+    "default": "fill with 0 if missing"
+  },
+  {
+    "feature_name": "num__is_offspeed",
+    "source": "average lookup/derived",
+    "transformation": "scaled",
+    "default": "fill with 0 if missing"
+  },
+  {
+    "feature_name": "num__zone_distance_x_count_pressure",
+    "source": "derived",
+    "transformation": "scaled",
+    "default": "fill with 0 if missing"
+  },
+  {
+    "feature_name": "num__movement_x_count_pressure",
+    "source": "derived",
+    "transformation": "scaled",
+    "default": "fill with 0 if missing"
+  },
+  {
+    "feature_name": "num__in_zone_x_two_strikes",
+    "source": "UI input",
+    "transformation": "scaled",
+    "default": "fill with 0 if missing"
+  },
+  {
+    "feature_name": "num__far_from_zone_x_ahead",
+    "source": "derived",
+    "transformation": "scaled",
+    "default": "fill with 0 if missing"
+  },
+  {
+    "feature_name": "num__velocity_movement_ratio",
+    "source": "derived",
+    "transformation": "scaled",
+    "default": "fill with 0 if missing"
+  },
+  {
+    "feature_name": "num__high_velocity",
+    "source": "average lookup/derived",
+    "transformation": "scaled",
+    "default": "fill with 0 if missing"
+  },
+  {
+    "feature_name": "num__low_velocity",
+    "source": "average lookup/derived",
+    "transformation": "scaled",
+    "default": "fill with 0 if missing"
+  },
+  {
+    "feature_name": "num__high_movement",
+    "source": "average lookup/derived",
+    "transformation": "scaled",
+    "default": "fill with 0 if missing"
+  },
+  {
+    "feature_name": "num__zone_edge_distance",
+    "source": "derived",
+    "transformation": "scaled",
+    "default": "fill with 0 if missing"
+  },
+  {
+    "feature_name": "num__zone_top_distance",
+    "source": "derived",
+    "transformation": "scaled",
+    "default": "fill with 0 if missing"
+  },
+  {
+    "feature_name": "num__zone_bottom_distance",
+    "source": "derived",
+    "transformation": "scaled",
+    "default": "fill with 0 if missing"
+  },
+  {
+    "feature_name": "num__closest_zone_edge",
+    "source": "derived",
+    "transformation": "scaled",
+    "default": "fill with 0 if missing"
+  },
+  {
+    "feature_name": "num__full_count",
+    "source": "average lookup/derived",
+    "transformation": "scaled",
+    "default": "fill with 0 if missing"
+  },
+  {
+    "feature_name": "num__hitters_count",
+    "source": "average lookup/derived",
+    "transformation": "scaled",
+    "default": "fill with 0 if missing"
+  },
+  {
+    "feature_name": "num__pitchers_count",
+    "source": "average lookup/derived",
+    "transformation": "scaled",
+    "default": "fill with 0 if missing"
+  },
+  {
+    "feature_name": "num__neutral_count",
+    "source": "average lookup/derived",
+    "transformation": "scaled",
+    "default": "fill with 0 if missing"
+  },
+  {
+    "feature_name": "num__velocity_drop",
+    "source": "average lookup/derived",
+    "transformation": "scaled",
+    "default": "fill with 0 if missing"
+  },
+  {
+    "feature_name": "num__breaking_ball_high",
+    "source": "average lookup/derived",
+    "transformation": "scaled",
+    "default": "fill with 0 if missing"
+  },
+  {
+    "feature_name": "num__offspeed_low",
+    "source": "average lookup/derived",
+    "transformation": "scaled",
+    "default": "fill with 0 if missing"
+  },
+  {
+    "feature_name": "num__inning_late",
+    "source": "average lookup/derived",
+    "transformation": "scaled",
+    "default": "fill with 0 if missing"
+  },
+  {
+    "feature_name": "num__close_game",
+    "source": "average lookup/derived",
+    "transformation": "scaled",
+    "default": "fill with 0 if missing"
+  },
+  {
+    "feature_name": "num__pitch_in_at_bat",
+    "source": "average lookup/derived",
+    "transformation": "scaled",
+    "default": "fill with 0 if missing"
+  },
+  {
+    "feature_name": "num__first_pitch",
+    "source": "average lookup/derived",
+    "transformation": "scaled",
+    "default": "fill with 0 if missing"
+  },
+  {
+    "feature_name": "num__last_pitch",
+    "source": "average lookup/derived",
+    "transformation": "scaled",
+    "default": "fill with 0 if missing"
+  },
+  {
+    "feature_name": "num__velocity_diff_from_avg",
+    "source": "average lookup/derived",
+    "transformation": "scaled",
+    "default": "fill with 0 if missing"
+  },
+  {
+    "feature_name": "num__horizontal_movement",
+    "source": "average lookup/derived",
+    "transformation": "scaled",
+    "default": "fill with 0 if missing"
+  },
+  {
+    "feature_name": "num__vertical_movement",
+    "source": "average lookup/derived",
+    "transformation": "scaled",
+    "default": "fill with 0 if missing"
+  },
+  {
+    "feature_name": "num__movement_ratio",
+    "source": "derived",
+    "transformation": "scaled",
+    "default": "fill with 0 if missing"
+  },
+  {
+    "feature_name": "num__high_horizontal_movement",
+    "source": "average lookup/derived",
+    "transformation": "scaled",
+    "default": "fill with 0 if missing"
+  },
+  {
+    "feature_name": "num__high_vertical_movement",
+    "source": "average lookup/derived",
+    "transformation": "scaled",
+    "default": "fill with 0 if missing"
+  },
+  {
+    "feature_name": "num__zone_center_distance",
+    "source": "derived",
+    "transformation": "scaled",
+    "default": "fill with 0 if missing"
+  },
+  {
+    "feature_name": "num__zone_corner",
+    "source": "derived",
+    "transformation": "scaled",
+    "default": "fill with 0 if missing"
+  },
+  {
+    "feature_name": "num__zone_heart",
+    "source": "derived",
+    "transformation": "scaled",
+    "default": "fill with 0 if missing"
+  },
+  {
+    "feature_name": "num__zone_shadow",
+    "source": "derived",
+    "transformation": "scaled",
+    "default": "fill with 0 if missing"
+  },
+  {
+    "feature_name": "num__pressure_situation",
+    "source": "average lookup/derived",
+    "transformation": "scaled",
+    "default": "fill with 0 if missing"
+  },
+  {
+    "feature_name": "num__must_swing",
+    "source": "average lookup/derived",
+    "transformation": "scaled",
+    "default": "fill with 0 if missing"
+  },
+  {
+    "feature_name": "num__can_take",
+    "source": "average lookup/derived",
+    "transformation": "scaled",
+    "default": "fill with 0 if missing"
+  },
+  {
+    "feature_name": "num__fastball_high",
+    "source": "average lookup/derived",
+    "transformation": "scaled",
+    "default": "fill with 0 if missing"
+  },
+  {
+    "feature_name": "num__breaking_ball_low",
+    "source": "average lookup/derived",
+    "transformation": "scaled",
+    "default": "fill with 0 if missing"
+  },
+  {
+    "feature_name": "num__offspeed_middle",
+    "source": "average lookup/derived",
+    "transformation": "scaled",
+    "default": "fill with 0 if missing"
+  },
+  {
+    "feature_name": "num__pitch_type_change",
+    "source": "UI input",
+    "transformation": "scaled",
+    "default": "fill with 0 if missing"
+  },
+  {
+    "feature_name": "num__location_extreme",
+    "source": "average lookup/derived",
+    "transformation": "scaled",
+    "default": "fill with 0 if missing"
+  },
+  {
+    "feature_name": "num__high_leverage",
+    "source": "average lookup/derived",
+    "transformation": "scaled",
+    "default": "fill with 0 if missing"
+  },
+  {
+    "feature_name": "num__count_ratio",
+    "source": "derived",
+    "transformation": "scaled",
+    "default": "fill with 0 if missing"
+  },
+  {
+    "feature_name": "num__behind_by_two",
+    "source": "average lookup/derived",
+    "transformation": "scaled",
+    "default": "fill with 0 if missing"
+  },
+  {
+    "feature_name": "num__ahead_by_two",
+    "source": "average lookup/derived",
+    "transformation": "scaled",
+    "default": "fill with 0 if missing"
+  },
+  {
+    "feature_name": "num__full_count_pressure",
+    "source": "derived",
+    "transformation": "scaled",
+    "default": "fill with 0 if missing"
+  },
+  {
+    "feature_name": "num__in_zone_two_strikes",
+    "source": "UI input",
+    "transformation": "scaled",
+    "default": "fill with 0 if missing"
+  },
+  {
+    "feature_name": "num__out_zone_ahead",
+    "source": "derived",
+    "transformation": "scaled",
+    "default": "fill with 0 if missing"
+  },
+  {
+    "feature_name": "num__edge_zone_decision",
+    "source": "derived",
+    "transformation": "scaled",
+    "default": "fill with 0 if missing"
+  },
+  {
+    "feature_name": "num__velocity_surprise",
+    "source": "average lookup/derived",
+    "transformation": "scaled",
+    "default": "fill with 0 if missing"
+  },
+  {
+    "feature_name": "num__velocity_consistency",
+    "source": "average lookup/derived",
+    "transformation": "scaled",
+    "default": "fill with 0 if missing"
+  },
+  {
+    "feature_name": "num__breaking_ball_velocity",
+    "source": "average lookup/derived",
+    "transformation": "scaled",
+    "default": "fill with 0 if missing"
+  },
+  {
+    "feature_name": "num__high_movement_fastball",
+    "source": "derived",
+    "transformation": "scaled",
+    "default": "fill with 0 if missing"
+  },
+  {
+    "feature_name": "num__low_movement_breaking",
+    "source": "derived",
+    "transformation": "scaled",
+    "default": "fill with 0 if missing"
+  },
+  {
+    "feature_name": "num__unexpected_movement",
+    "source": "average lookup/derived",
+    "transformation": "scaled",
+    "default": "fill with 0 if missing"
+  },
+  {
+    "feature_name": "num__corner_pitch",
+    "source": "average lookup/derived",
+    "transformation": "scaled",
+    "default": "fill with 0 if missing"
+  },
+  {
+    "feature_name": "num__heart_pitch",
+    "source": "average lookup/derived",
+    "transformation": "scaled",
+    "default": "fill with 0 if missing"
+  },
+  {
+    "feature_name": "num__shadow_pitch",
+    "source": "average lookup/derived",
+    "transformation": "scaled",
+    "default": "fill with 0 if missing"
+  },
+  {
+    "feature_name": "num__extreme_location",
+    "source": "average lookup/derived",
+    "transformation": "scaled",
+    "default": "fill with 0 if missing"
+  },
+  {
+    "feature_name": "num__velocity_x_location",
+    "source": "average lookup/derived",
+    "transformation": "scaled",
+    "default": "fill with 0 if missing"
+  },
+  {
+    "feature_name": "num__pitch_type_x_location",
+    "source": "UI input",
+    "transformation": "scaled",
+    "default": "fill with 0 if missing"
+  },
+  {
+    "feature_name": "num__count_x_zone",
+    "source": "derived",
+    "transformation": "scaled",
+    "default": "fill with 0 if missing"
+  },
+  {
+    "feature_name": "num__early_count_swing",
+    "source": "derived",
+    "transformation": "scaled",
+    "default": "fill with 0 if missing"
+  },
+  {
+    "feature_name": "num__late_count_take",
+    "source": "derived",
+    "transformation": "scaled",
+    "default": "fill with 0 if missing"
+  },
+  {
+    "feature_name": "num__pressure_swing",
+    "source": "average lookup/derived",
+    "transformation": "scaled",
+    "default": "fill with 0 if missing"
+  },
+  {
+    "feature_name": "num__opportunity_take",
+    "source": "average lookup/derived",
+    "transformation": "scaled",
+    "default": "fill with 0 if missing"
+  },
+  {
+    "feature_name": "num__zone_quadrant_encoded",
+    "source": "derived",
+    "transformation": "scaled",
+    "default": "fill with 0 if missing"
+  },
+  {
+    "feature_name": "num__location_quadrant_encoded",
+    "source": "average lookup/derived",
+    "transformation": "scaled",
+    "default": "fill with 0 if missing"
+  },
+  {
+    "feature_name": "num__count_advantage_encoded",
+    "source": "derived",
+    "transformation": "scaled",
+    "default": "fill with 0 if missing"
+  },
+  {
+    "feature_name": "num__early_count",
+    "source": "average lookup/derived",
+    "transformation": "scaled",
+    "default": "fill with 0 if missing"
+  },
+  {
+    "feature_name": "num__middle_count",
+    "source": "average lookup/derived",
+    "transformation": "scaled",
+    "default": "fill with 0 if missing"
+  },
+  {
+    "feature_name": "num__late_count",
+    "source": "average lookup/derived",
+    "transformation": "scaled",
+    "default": "fill with 0 if missing"
+  },
+  {
+    "feature_name": "num__pressure_count",
+    "source": "average lookup/derived",
+    "transformation": "scaled",
+    "default": "fill with 0 if missing"
+  },
+  {
+    "feature_name": "num__early_count_penalty",
+    "source": "derived",
+    "transformation": "scaled",
+    "default": "fill with 0 if missing"
+  },
+  {
+    "feature_name": "num__early_count_zone_penalty",
+    "source": "derived",
+    "transformation": "scaled",
+    "default": "fill with 0 if missing"
+  },
+  {
+    "feature_name": "num__early_count_outside_penalty",
+    "source": "derived",
+    "transformation": "scaled",
+    "default": "fill with 0 if missing"
+  },
+  {
+    "feature_name": "num__count_swing_rate_adjustment",
+    "source": "derived",
+    "transformation": "scaled",
+    "default": "fill with 0 if missing"
+  },
+  {
+    "feature_name": "num__early_count_location_penalty",
+    "source": "derived",
+    "transformation": "scaled",
+    "default": "fill with 0 if missing"
+  },
+  {
+    "feature_name": "num__early_count_breaking_penalty",
+    "source": "derived",
+    "transformation": "scaled",
+    "default": "fill with 0 if missing"
+  },
+  {
+    "feature_name": "num__early_count_offspeed_penalty",
+    "source": "derived",
+    "transformation": "scaled",
+    "default": "fill with 0 if missing"
+  },
+  {
+    "feature_name": "num__early_count_low_vel_penalty",
+    "source": "derived",
+    "transformation": "scaled",
+    "default": "fill with 0 if missing"
+  },
+  {
+    "feature_name": "num__early_count_high_vel_penalty",
+    "source": "derived",
+    "transformation": "scaled",
+    "default": "fill with 0 if missing"
+  },
+  {
+    "feature_name": "num__acuna_fastball_swing_rate",
+    "source": "derived",
+    "transformation": "scaled",
+    "default": "fill with 0 if missing"
+  },
+  {
+    "feature_name": "num__acuna_breaking_swing_rate",
+    "source": "derived",
+    "transformation": "scaled",
+    "default": "fill with 0 if missing"
+  },
+  {
+    "feature_name": "num__acuna_offspeed_swing_rate",
+    "source": "derived",
+    "transformation": "scaled",
+    "default": "fill with 0 if missing"
+  },
+  {
+    "feature_name": "num__acuna_zone_swing_rate",
+    "source": "derived",
+    "transformation": "scaled",
+    "default": "fill with 0 if missing"
+  },
+  {
+    "feature_name": "num__acuna_outside_swing_rate",
+    "source": "derived",
+    "transformation": "scaled",
+    "default": "fill with 0 if missing"
+  },
+  {
+    "feature_name": "num__acuna_high_swing_rate",
+    "source": "derived",
+    "transformation": "scaled",
+    "default": "fill with 0 if missing"
+  },
+  {
+    "feature_name": "num__acuna_low_swing_rate",
+    "source": "derived",
+    "transformation": "scaled",
+    "default": "fill with 0 if missing"
+  },
+  {
+    "feature_name": "num__acuna_ahead_swing_rate",
+    "source": "derived",
+    "transformation": "scaled",
+    "default": "fill with 0 if missing"
+  },
+  {
+    "feature_name": "num__acuna_behind_swing_rate",
+    "source": "derived",
+    "transformation": "scaled",
+    "default": "fill with 0 if missing"
+  },
+  {
+    "feature_name": "num__acuna_two_strikes_swing_rate",
+    "source": "average lookup/derived",
+    "transformation": "scaled",
+    "default": "fill with 0 if missing"
+  },
+  {
+    "feature_name": "num__acuna_full_count_swing_rate",
+    "source": "derived",
+    "transformation": "scaled",
+    "default": "fill with 0 if missing"
+  },
+  {
+    "feature_name": "num__acuna_high_vel_swing_rate",
+    "source": "derived",
+    "transformation": "scaled",
+    "default": "fill with 0 if missing"
+  },
+  {
+    "feature_name": "num__acuna_low_vel_swing_rate",
+    "source": "derived",
+    "transformation": "scaled",
+    "default": "fill with 0 if missing"
+  },
+  {
+    "feature_name": "num__acuna_high_movement_swing_rate",
+    "source": "derived",
+    "transformation": "scaled",
+    "default": "fill with 0 if missing"
+  },
+  {
+    "feature_name": "num__acuna_low_movement_swing_rate",
+    "source": "derived",
+    "transformation": "scaled",
+    "default": "fill with 0 if missing"
+  },
+  {
+    "feature_name": "num__acuna_late_inning_swing_rate",
+    "source": "derived",
+    "transformation": "scaled",
+    "default": "fill with 0 if missing"
+  },
+  {
+    "feature_name": "num__acuna_close_game_swing_rate",
+    "source": "derived",
+    "transformation": "scaled",
+    "default": "fill with 0 if missing"
+  },
+  {
+    "feature_name": "num__acuna_first_pitch_swing_rate",
+    "source": "derived",
+    "transformation": "scaled",
+    "default": "fill with 0 if missing"
+  },
+  {
+    "feature_name": "num__acuna_last_pitch_swing_rate",
+    "source": "derived",
+    "transformation": "scaled",
+    "default": "fill with 0 if missing"
+  },
+  {
+    "feature_name": "num__acuna_pitch_type_change_swing_rate",
+    "source": "average lookup/derived",
+    "transformation": "scaled",
+    "default": "fill with 0 if missing"
+  },
+  {
+    "feature_name": "num__acuna_velocity_drop_swing_rate",
+    "source": "derived",
+    "transformation": "scaled",
+    "default": "fill with 0 if missing"
+  },
+  {
+    "feature_name": "num__acuna_velocity_surge_swing_rate",
+    "source": "derived",
+    "transformation": "scaled",
+    "default": "fill with 0 if missing"
+  },
+  {
+    "feature_name": "num__acuna_location_extreme_swing_rate",
+    "source": "derived",
+    "transformation": "scaled",
+    "default": "fill with 0 if missing"
+  },
+  {
+    "feature_name": "num__acuna_location_heart_swing_rate",
+    "source": "derived",
+    "transformation": "scaled",
+    "default": "fill with 0 if missing"
+  },
+  {
+    "feature_name": "num__acuna_pressure_swing_rate",
+    "source": "derived",
+    "transformation": "scaled",
+    "default": "fill with 0 if missing"
+  },
+  {
+    "feature_name": "num__acuna_opportunity_swing_rate",
+    "source": "derived",
+    "transformation": "scaled",
+    "default": "fill with 0 if missing"
+  },
+  {
+    "feature_name": "num__acuna_zone_corner_swing_rate",
+    "source": "derived",
+    "transformation": "scaled",
+    "default": "fill with 0 if missing"
+  },
+  {
+    "feature_name": "num__acuna_zone_shadow_swing_rate",
+    "source": "derived",
+    "transformation": "scaled",
+    "default": "fill with 0 if missing"
+  },
+  {
+    "feature_name": "num__acuna_zone_heart_swing_rate",
+    "source": "derived",
+    "transformation": "scaled",
+    "default": "fill with 0 if missing"
+  },
+  {
+    "feature_name": "num__acuna_zone_heart_hit_rate",
+    "source": "derived",
+    "transformation": "scaled",
+    "default": "fill with 0 if missing"
+  },
+  {
+    "feature_name": "num__acuna_zone_corner_hit_rate",
+    "source": "derived",
+    "transformation": "scaled",
+    "default": "fill with 0 if missing"
+  },
+  {
+    "feature_name": "num__acuna_zone_shadow_hit_rate",
+    "source": "derived",
+    "transformation": "scaled",
+    "default": "fill with 0 if missing"
+  },
+  {
+    "feature_name": "num__acuna_zone_hit_rate",
+    "source": "derived",
+    "transformation": "scaled",
+    "default": "fill with 0 if missing"
+  },
+  {
+    "feature_name": "num__acuna_outside_hit_rate",
+    "source": "derived",
+    "transformation": "scaled",
+    "default": "fill with 0 if missing"
+  },
+  {
+    "feature_name": "num__zone_heart_contact",
+    "source": "derived",
+    "transformation": "scaled",
+    "default": "fill with 0 if missing"
+  },
+  {
+    "feature_name": "num__zone_corner_contact",
+    "source": "derived",
+    "transformation": "scaled",
+    "default": "fill with 0 if missing"
+  },
+  {
+    "feature_name": "num__zone_shadow_contact",
+    "source": "derived",
+    "transformation": "scaled",
+    "default": "fill with 0 if missing"
+  },
+  {
+    "feature_name": "num__zone_overall_contact",
+    "source": "derived",
+    "transformation": "scaled",
+    "default": "fill with 0 if missing"
+  },
+  {
+    "feature_name": "num__outside_zone_contact",
+    "source": "derived",
+    "transformation": "scaled",
+    "default": "fill with 0 if missing"
+  },
+  {
+    "feature_name": "num__fastball_zone_contact",
+    "source": "derived",
+    "transformation": "scaled",
+    "default": "fill with 0 if missing"
+  },
+  {
+    "feature_name": "num__breaking_zone_contact",
+    "source": "derived",
+    "transformation": "scaled",
+    "default": "fill with 0 if missing"
+  },
+  {
+    "feature_name": "num__offspeed_zone_contact",
+    "source": "derived",
+    "transformation": "scaled",
+    "default": "fill with 0 if missing"
+  },
+  {
+    "feature_name": "num__pressure_zone_contact",
+    "source": "derived",
+    "transformation": "scaled",
+    "default": "fill with 0 if missing"
+  },
+  {
+    "feature_name": "num__opportunity_zone_contact",
+    "source": "derived",
+    "transformation": "scaled",
+    "default": "fill with 0 if missing"
+  },
+  {
+    "feature_name": "num__two_strikes_zone_contact",
+    "source": "UI input",
+    "transformation": "scaled",
+    "default": "fill with 0 if missing"
+  },
+  {
+    "feature_name": "num__batting_average_bip",
+    "source": "average lookup/derived",
+    "transformation": "scaled",
+    "default": "fill with 0 if missing"
+  },
+  {
+    "feature_name": "num__whiff_rate",
+    "source": "average lookup/derived",
+    "transformation": "scaled",
+    "default": "fill with 0 if missing"
+  },
+  {
+    "feature_name": "num__field_out_rate_bip",
+    "source": "average lookup/derived",
+    "transformation": "scaled",
+    "default": "fill with 0 if missing"
+  },
+  {
+    "feature_name": "num__balls_in_play",
+    "source": "average lookup/derived",
+    "transformation": "scaled",
+    "default": "fill with 0 if missing"
+  },
+  {
+    "feature_name": "num__total_swings",
+    "source": "average lookup/derived",
+    "transformation": "scaled",
+    "default": "fill with 0 if missing"
+  },
+  {
+    "feature_name": "num__total_whiffs",
+    "source": "average lookup/derived",
+    "transformation": "scaled",
+    "default": "fill with 0 if missing"
+  },
+  {
+    "feature_name": "cat__pitch_type_CH",
+    "source": "UI input",
+    "transformation": "one-hot",
+    "default": "fill with 0 if missing"
+  },
+  {
+    "feature_name": "cat__pitch_type_CU",
+    "source": "UI input",
+    "transformation": "one-hot",
+    "default": "fill with 0 if missing"
+  },
+  {
+    "feature_name": "cat__pitch_type_EP",
+    "source": "UI input",
+    "transformation": "one-hot",
+    "default": "fill with 0 if missing"
+  },
+  {
+    "feature_name": "cat__pitch_type_FA",
+    "source": "UI input",
+    "transformation": "one-hot",
+    "default": "fill with 0 if missing"
+  },
+  {
+    "feature_name": "cat__pitch_type_FC",
+    "source": "UI input",
+    "transformation": "one-hot",
+    "default": "fill with 0 if missing"
+  },
+  {
+    "feature_name": "cat__pitch_type_FF",
+    "source": "UI input",
+    "transformation": "one-hot",
+    "default": "fill with 0 if missing"
+  },
+  {
+    "feature_name": "cat__pitch_type_FS",
+    "source": "UI input",
+    "transformation": "one-hot",
+    "default": "fill with 0 if missing"
+  },
+  {
+    "feature_name": "cat__pitch_type_KC",
+    "source": "UI input",
+    "transformation": "one-hot",
+    "default": "fill with 0 if missing"
+  },
+  {
+    "feature_name": "cat__pitch_type_SI",
+    "source": "UI input",
+    "transformation": "one-hot",
+    "default": "fill with 0 if missing"
+  },
+  {
+    "feature_name": "cat__pitch_type_SL",
+    "source": "UI input",
+    "transformation": "one-hot",
+    "default": "fill with 0 if missing"
+  },
+  {
+    "feature_name": "cat__pitch_type_ST",
+    "source": "UI input",
+    "transformation": "one-hot",
+    "default": "fill with 0 if missing"
+  },
+  {
+    "feature_name": "cat__pitch_type_SV",
+    "source": "UI input",
+    "transformation": "one-hot",
+    "default": "fill with 0 if missing"
+  },
+  {
+    "feature_name": "cat__pitch_type_nan",
+    "source": "UI input",
+    "transformation": "one-hot",
+    "default": "fill with 0 if missing"
+  },
+  {
+    "feature_name": "cat__p_throws_L",
+    "source": "UI input",
+    "transformation": "one-hot",
+    "default": "fill with 0 if missing"
+  },
+  {
+    "feature_name": "cat__p_throws_R",
+    "source": "UI input",
+    "transformation": "one-hot",
+    "default": "fill with 0 if missing"
+  },
+  {
+    "feature_name": "cat__if_fielding_alignment_Infield shade",
+    "source": "average lookup/derived",
+    "transformation": "one-hot",
+    "default": "fill with 0 if missing"
+  },
+  {
+    "feature_name": "cat__if_fielding_alignment_Infield shift",
+    "source": "average lookup/derived",
+    "transformation": "one-hot",
+    "default": "fill with 0 if missing"
+  },
+  {
+    "feature_name": "cat__if_fielding_alignment_Standard",
+    "source": "average lookup/derived",
+    "transformation": "one-hot",
+    "default": "fill with 0 if missing"
+  },
+  {
+    "feature_name": "cat__if_fielding_alignment_Strategic",
+    "source": "average lookup/derived",
+    "transformation": "one-hot",
+    "default": "fill with 0 if missing"
+  },
+  {
+    "feature_name": "cat__if_fielding_alignment_nan",
+    "source": "average lookup/derived",
+    "transformation": "one-hot",
+    "default": "fill with 0 if missing"
+  },
+  {
+    "feature_name": "cat__of_fielding_alignment_Standard",
+    "source": "average lookup/derived",
+    "transformation": "one-hot",
+    "default": "fill with 0 if missing"
+  },
+  {
+    "feature_name": "cat__of_fielding_alignment_Strategic",
+    "source": "average lookup/derived",
+    "transformation": "one-hot",
+    "default": "fill with 0 if missing"
+  },
+  {
+    "feature_name": "cat__of_fielding_alignment_nan",
+    "source": "average lookup/derived",
+    "transformation": "one-hot",
+    "default": "fill with 0 if missing"
+  },
+  {
+    "feature_name": "cat__stand_R",
+    "source": "UI input",
+    "transformation": "one-hot",
+    "default": "fill with 0 if missing"
+  },
+  {
+    "feature_name": "cat__home_team_ATH",
+    "source": "average lookup/derived",
+    "transformation": "one-hot",
+    "default": "fill with 0 if missing"
+  },
+  {
+    "feature_name": "cat__home_team_ATL",
+    "source": "average lookup/derived",
+    "transformation": "one-hot",
+    "default": "fill with 0 if missing"
+  },
+  {
+    "feature_name": "cat__home_team_AZ",
+    "source": "average lookup/derived",
+    "transformation": "one-hot",
+    "default": "fill with 0 if missing"
+  },
+  {
+    "feature_name": "cat__home_team_BAL",
+    "source": "average lookup/derived",
+    "transformation": "one-hot",
+    "default": "fill with 0 if missing"
+  },
+  {
+    "feature_name": "cat__home_team_BOS",
+    "source": "average lookup/derived",
+    "transformation": "one-hot",
+    "default": "fill with 0 if missing"
+  },
+  {
+    "feature_name": "cat__home_team_CHC",
+    "source": "average lookup/derived",
+    "transformation": "one-hot",
+    "default": "fill with 0 if missing"
+  },
+  {
+    "feature_name": "cat__home_team_CIN",
+    "source": "average lookup/derived",
+    "transformation": "one-hot",
+    "default": "fill with 0 if missing"
+  },
+  {
+    "feature_name": "cat__home_team_CLE",
+    "source": "average lookup/derived",
+    "transformation": "one-hot",
+    "default": "fill with 0 if missing"
+  },
+  {
+    "feature_name": "cat__home_team_COL",
+    "source": "average lookup/derived",
+    "transformation": "one-hot",
+    "default": "fill with 0 if missing"
+  },
+  {
+    "feature_name": "cat__home_team_CWS",
+    "source": "average lookup/derived",
+    "transformation": "one-hot",
+    "default": "fill with 0 if missing"
+  },
+  {
+    "feature_name": "cat__home_team_DET",
+    "source": "average lookup/derived",
+    "transformation": "one-hot",
+    "default": "fill with 0 if missing"
+  },
+  {
+    "feature_name": "cat__home_team_HOU",
+    "source": "average lookup/derived",
+    "transformation": "one-hot",
+    "default": "fill with 0 if missing"
+  },
+  {
+    "feature_name": "cat__home_team_KC",
+    "source": "average lookup/derived",
+    "transformation": "one-hot",
+    "default": "fill with 0 if missing"
+  },
+  {
+    "feature_name": "cat__home_team_LAD",
+    "source": "average lookup/derived",
+    "transformation": "one-hot",
+    "default": "fill with 0 if missing"
+  },
+  {
+    "feature_name": "cat__home_team_MIA",
+    "source": "average lookup/derived",
+    "transformation": "one-hot",
+    "default": "fill with 0 if missing"
+  },
+  {
+    "feature_name": "cat__home_team_MIL",
+    "source": "average lookup/derived",
+    "transformation": "one-hot",
+    "default": "fill with 0 if missing"
+  },
+  {
+    "feature_name": "cat__home_team_MIN",
+    "source": "average lookup/derived",
+    "transformation": "one-hot",
+    "default": "fill with 0 if missing"
+  },
+  {
+    "feature_name": "cat__home_team_NYM",
+    "source": "average lookup/derived",
+    "transformation": "one-hot",
+    "default": "fill with 0 if missing"
+  },
+  {
+    "feature_name": "cat__home_team_NYY",
+    "source": "average lookup/derived",
+    "transformation": "one-hot",
+    "default": "fill with 0 if missing"
+  },
+  {
+    "feature_name": "cat__home_team_OAK",
+    "source": "average lookup/derived",
+    "transformation": "one-hot",
+    "default": "fill with 0 if missing"
+  },
+  {
+    "feature_name": "cat__home_team_PHI",
+    "source": "average lookup/derived",
+    "transformation": "one-hot",
+    "default": "fill with 0 if missing"
+  },
+  {
+    "feature_name": "cat__home_team_PIT",
+    "source": "average lookup/derived",
+    "transformation": "one-hot",
+    "default": "fill with 0 if missing"
+  },
+  {
+    "feature_name": "cat__home_team_SD",
+    "source": "average lookup/derived",
+    "transformation": "one-hot",
+    "default": "fill with 0 if missing"
+  },
+  {
+    "feature_name": "cat__home_team_SEA",
+    "source": "average lookup/derived",
+    "transformation": "one-hot",
+    "default": "fill with 0 if missing"
+  },
+  {
+    "feature_name": "cat__home_team_SF",
+    "source": "average lookup/derived",
+    "transformation": "one-hot",
+    "default": "fill with 0 if missing"
+  },
+  {
+    "feature_name": "cat__home_team_STL",
+    "source": "average lookup/derived",
+    "transformation": "one-hot",
+    "default": "fill with 0 if missing"
+  },
+  {
+    "feature_name": "cat__home_team_TB",
+    "source": "average lookup/derived",
+    "transformation": "one-hot",
+    "default": "fill with 0 if missing"
+  },
+  {
+    "feature_name": "cat__home_team_TEX",
+    "source": "average lookup/derived",
+    "transformation": "one-hot",
+    "default": "fill with 0 if missing"
+  },
+  {
+    "feature_name": "cat__home_team_TOR",
+    "source": "average lookup/derived",
+    "transformation": "one-hot",
+    "default": "fill with 0 if missing"
+  },
+  {
+    "feature_name": "cat__home_team_WSH",
+    "source": "average lookup/derived",
+    "transformation": "one-hot",
+    "default": "fill with 0 if missing"
+  },
+  {
+    "feature_name": "cat__zone_quadrant_down_in",
+    "source": "derived",
+    "transformation": "one-hot",
+    "default": "fill with 0 if missing"
+  },
+  {
+    "feature_name": "cat__zone_quadrant_down_out",
+    "source": "derived",
+    "transformation": "one-hot",
+    "default": "fill with 0 if missing"
+  },
+  {
+    "feature_name": "cat__zone_quadrant_up_in",
+    "source": "derived",
+    "transformation": "one-hot",
+    "default": "fill with 0 if missing"
+  },
+  {
+    "feature_name": "cat__zone_quadrant_up_out",
+    "source": "derived",
+    "transformation": "one-hot",
+    "default": "fill with 0 if missing"
+  },
+  {
+    "feature_name": "cat__location_quadrant_down_left",
+    "source": "average lookup/derived",
+    "transformation": "one-hot",
+    "default": "fill with 0 if missing"
+  },
+  {
+    "feature_name": "cat__location_quadrant_down_right",
+    "source": "average lookup/derived",
+    "transformation": "one-hot",
+    "default": "fill with 0 if missing"
+  },
+  {
+    "feature_name": "cat__location_quadrant_up_left",
+    "source": "average lookup/derived",
+    "transformation": "one-hot",
+    "default": "fill with 0 if missing"
+  },
+  {
+    "feature_name": "cat__location_quadrant_up_right",
+    "source": "average lookup/derived",
+    "transformation": "one-hot",
+    "default": "fill with 0 if missing"
+  },
+  {
+    "feature_name": "cat__count_advantage_hitter_ahead",
+    "source": "derived",
+    "transformation": "one-hot",
+    "default": "fill with 0 if missing"
+  },
+  {
+    "feature_name": "cat__count_advantage_neutral",
+    "source": "derived",
+    "transformation": "one-hot",
+    "default": "fill with 0 if missing"
+  },
+  {
+    "feature_name": "cat__count_advantage_pitcher_ahead",
+    "source": "derived",
+    "transformation": "one-hot",
+    "default": "fill with 0 if missing"
+  }
+]

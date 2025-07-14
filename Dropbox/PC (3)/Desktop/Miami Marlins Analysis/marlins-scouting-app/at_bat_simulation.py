@@ -7,6 +7,7 @@ import pickle
 from test_pitch_json_classifier import load_career_data, calculate_hitter_features, load_average_metrics, prepare_pitch_features
 import warnings
 warnings.filterwarnings('ignore')
+import traceback
 
 class AtBatSimulation:
     def __init__(self, hitter_name='acuna', pitcher_name='unknown'):
@@ -17,6 +18,22 @@ class AtBatSimulation:
         self.at_bat_outcome = None
         self.pitch_sequence = []
         
+        # Load pitcher averages
+        self.pitcher_averages = self.load_pitcher_averages()
+        
+        # Load hitter averages CSV for advanced stats
+        try:
+            averages_csv = "ronald_acuna_jr_averages.csv"
+            if os.path.exists(averages_csv):
+                self.hitter_averages = pd.read_csv(averages_csv)
+                print(f"✓ Loaded hitter averages from {averages_csv}")
+            else:
+                self.hitter_averages = None
+                print(f"⚠️ Hitter averages CSV not found: {averages_csv}")
+        except Exception as e:
+            print(f"✗ Error loading hitter averages CSV: {e}")
+            self.hitter_averages = None
+
         # Load models
         try:
             with open('sequential_models.pkl', 'rb') as f:
@@ -61,11 +78,49 @@ class AtBatSimulation:
             self.whiff_model = None
             self.whiff_preprocessor = None
     
+    def load_pitcher_averages(self):
+        """Load pitcher-specific pitch averages from CSV file"""
+        try:
+            # Try to load the specific pitcher's averages
+            csv_filename = f"{self.pitcher_name.lower().replace(' ', '_')}_pitch_averages.csv"
+            if os.path.exists(csv_filename):
+                pitcher_df = pd.read_csv(csv_filename)
+                print(f"✓ Loaded pitcher averages from {csv_filename}")
+                return pitcher_df
+            else:
+                # Fallback to Sandy Alcantara's averages if specific pitcher not found
+                fallback_filename = "sandy_alcantara_pitch_averages.csv"
+                if os.path.exists(fallback_filename):
+                    pitcher_df = pd.read_csv(fallback_filename)
+                    print(f"✓ Loaded fallback pitcher averages from {fallback_filename}")
+                    return pitcher_df
+                else:
+                    print("⚠️ No pitcher averages file found")
+                    return None
+        except Exception as e:
+            print(f"✗ Error loading pitcher averages: {e}")
+            return None
+    
+    def get_pitcher_averages_for_pitch_type(self, pitch_type):
+        """Get pitcher-specific averages for a given pitch type"""
+        if self.pitcher_averages is None:
+            return {}
+        
+        # Filter to the specific pitch type
+        pitch_averages = self.pitcher_averages[self.pitcher_averages['pitch_type'] == pitch_type]
+        
+        if len(pitch_averages) == 0:
+            print(f"⚠️ No averages found for pitch type {pitch_type}")
+            return {}
+        
+        # Return the first row as a dictionary
+        return pitch_averages.iloc[0].to_dict()
+    
     def reset_at_bat(self):
-        """Reset the at-bat to 0-0 count"""
+        """Reset the at-bat to 0-0 count, but do NOT clear pitch_sequence here"""
         self.current_count = {'balls': 0, 'strikes': 0}
         self.at_bat_outcome = None
-        self.pitch_sequence = []
+        # self.pitch_sequence = []  # Do NOT clear here; let frontend clear on new at-bat
         print("At-bat reset to 0-0 count")
     
     def get_pitch_for_count(self, balls, strikes):
@@ -121,6 +176,20 @@ class AtBatSimulation:
             
             print(f"✅ Fixed zone to: {pitch_data['zone']}")
         
+        # Get pitcher averages for this pitch type
+        pitch_type = pitch_data.get('pitch_type', 'FF')
+        pitcher_averages = self.get_pitcher_averages_for_pitch_type(pitch_type)
+        
+        # Merge pitcher averages with pitch data
+        if pitcher_averages:
+            # Override pitch data with pitcher averages for key metrics
+            for key, value in pitcher_averages.items():
+                if key not in ['pitch_type'] and not pd.isna(value):  # Skip pitch_type and NaN values
+                    pitch_data[key] = value
+            print(f"✓ Applied pitcher averages for {pitch_type}")
+
+        print(pitch_data)
+        
         # Prepare features using the same approach as the test script
         print("🔧 Generating features for swing vs no swing model...")
         
@@ -128,10 +197,12 @@ class AtBatSimulation:
         features = prepare_pitch_features(pitch_data, self.averages)
         
         # Update features with actual career data
+        print(self.hitter_features)
         if self.hitter_features:
             for feature_name, value in self.hitter_features.items():
                 if feature_name in features:
                     features[feature_name] = value
+            print(f"✓ Applied {len(self.hitter_features)} hitter-specific features")
         
         # Create DataFrame with features
         df = pd.DataFrame([features])
@@ -412,36 +483,86 @@ class AtBatSimulation:
             if is_swing:
                 # --- Whiff vs Contact Integration ---
                 if self.whiff_model is not None and self.whiff_preprocessor is not None:
-                    X_whiff = self.prepare_whiff_features(pitch_data)
-                    whiff_proba = self.whiff_model.predict_proba(X_whiff)[0][1]
-                    contact_proba = self.whiff_model.predict_proba(X_whiff)[0][0]
-                    whiff_pred = self.whiff_model.predict(X_whiff)[0]
-                    details += f' | Whiff prob: {whiff_proba:.2f}, Contact prob: {contact_proba:.2f}'
-                    if whiff_pred == 1:
-                        outcome = 'whiff'
-                        self.current_count['strikes'] += 1
-                        details += ' | SWING & MISS (strike)'
+                    # Use the new comprehensive whiff vs contact prediction method
+                    whiff_result = self.predict_whiff_vs_contact(pitch_data)
+                    
+                    if whiff_result is not None:
+                        whiff_proba = whiff_result['whiff_probability']
+                        contact_proba = whiff_result['contact_probability']
+                        whiff_pred = whiff_result['is_whiff']
+                        details += f' | Whiff prob: {whiff_proba:.2f}, Contact prob: {contact_proba:.2f}'
+                        
+                        if whiff_pred:
+                            # SWING & MISS
+                            self.current_count['strikes'] += 1
+                            if self.current_count['strikes'] >= 3:
+                                outcome = 'whiff'
+                                at_bat_outcome = 'strikeout'
+                                details += ' | SWING & MISS (strikeout)'
+                            else:
+                                outcome = 'whiff'
+                                at_bat_outcome = None
+                                details += ' | SWING & MISS (strike)'
+                        else:
+                            # CONTACT
+                            outcome = 'contact'
+                            at_bat_outcome = 'contact'
+                            details += ' | CONTACT (at-bat ends)'
                     else:
-                        outcome = 'contact'
-                        details += ' | CONTACT (at-bat ends)'
-                        at_bat_outcome = 'contact'
+                        # Fallback if prediction fails
+                        self.current_count['strikes'] += 1
+                        if self.current_count['strikes'] >= 3:
+                            outcome = 'swing'
+                            at_bat_outcome = 'strikeout'
+                            details += ' | SWING (strikeout)'
+                        else:
+                            outcome = 'swing'
+                            at_bat_outcome = None
+                            details += ' | SWING (strike assumed for demo)'
                 else:
-                    outcome = 'swing'
                     self.current_count['strikes'] += 1
-                    details += ' | SWING (strike assumed for demo)'
+                    if self.current_count['strikes'] >= 3:
+                        outcome = 'swing'
+                        at_bat_outcome = 'strikeout'
+                        details += ' | SWING (strikeout)'
+                    else:
+                        outcome = 'swing'
+                        at_bat_outcome = None
+                        details += ' | SWING (strike assumed for demo)'
             else:
                 # Determine if it's a ball or strike
                 ball_or_strike = self.determine_ball_or_strike(pitch_data)
                 outcome = ball_or_strike
                 self.update_count(ball_or_strike)
                 details += f' | NO SWING - {ball_or_strike.upper()}'
+                # If at-bat ends due to called strikeout or walk, set outcome
+                if self.current_count['strikes'] >= 3:
+                    at_bat_outcome = 'strikeout'
+                elif self.current_count['balls'] >= 4:
+                    at_bat_outcome = 'walk'
+                else:
+                    at_bat_outcome = None
 
-        # Check for at-bat ending conditions
-        at_bat_outcome = None if 'at_bat_outcome' not in locals() else at_bat_outcome
-        if self.current_count['strikes'] >= 3:
-            at_bat_outcome = 'strikeout'
-        elif self.current_count['balls'] >= 4:
-            at_bat_outcome = 'walk'
+        # Always append the actual pitch to the sequence
+        self.pitch_sequence.append({
+            'outcome': outcome,
+            'confidence': prediction_confidence,
+            'details': details,
+            'count': dict(self.current_count),
+            'at_bat_outcome': at_bat_outcome,
+            'pitch_type': pitch_data.get('pitch_type', None)
+        })
+
+        # If at-bat ends, append a summary and reset at-bat (but do NOT clear pitch_sequence)
+        if at_bat_outcome:
+            self.pitch_sequence.append({
+                'outcome': at_bat_outcome,
+                'confidence': 1.0,
+                'details': f'At-bat ended with {at_bat_outcome.upper()}',
+                'count': dict(self.current_count),
+                'at_bat_outcome': at_bat_outcome
+            })
+            self.reset_at_bat()
 
         result = {
             'outcome': outcome,
@@ -450,21 +571,8 @@ class AtBatSimulation:
             'count': dict(self.current_count),
             'at_bat_outcome': at_bat_outcome,
         }
-        self.pitch_sequence.append(result)
-
-        # If at-bat ends, append summary and do NOT reset at-bat here
-        if at_bat_outcome:
-            summary_result = {
-                'outcome': at_bat_outcome,
-                'confidence': 1.0,
-                'details': f'At-bat ended with {at_bat_outcome.upper()}',
-                'count': dict(self.current_count),
-                'at_bat_outcome': at_bat_outcome,
-            }
-            self.pitch_sequence.append(summary_result)
-            # Do NOT reset here; let frontend display the outcome
-            # self.reset_at_bat()
-
+        # Always return the full pitch sequence
+        result['pitch_sequence'] = self.pitch_sequence
         return result
     
     def get_at_bat_summary(self):
@@ -475,6 +583,198 @@ class AtBatSimulation:
             'total_pitches': len(self.pitch_sequence),
             'pitch_sequence': self.pitch_sequence
         }
+
+    def get_hitter_avg_stat(self, pitch_type, stat):
+        """Get stat from hitter averages for pitch_type, fallback to ALL, else 0.0"""
+        if self.hitter_averages is None:
+            print(f"[DEBUG] hitter_averages is None!")
+            return 0.0
+        # Normalize pitch_type for robust matching
+        pt = str(pitch_type).strip().upper()
+        df = self.hitter_averages
+        # Normalize the DataFrame column for matching
+        df['pitch_type_norm'] = df['pitch_type'].astype(str).str.strip().str.upper()
+        print(f"[DEBUG] Requested pitch_type: '{pitch_type}' (normalized: '{pt}'), stat: '{stat}'")
+        print(f"[DEBUG] Available pitch_type_norm values: {df['pitch_type_norm'].unique()}")
+        row = df[df['pitch_type_norm'] == pt]
+        print(f"[DEBUG] Row found for '{pt}': {not row.empty}")
+        if row.empty:
+            row = df[df['pitch_type_norm'] == 'ALL']
+            print(f"[DEBUG] Row found for 'ALL': {not row.empty}")
+        if not row.empty and stat in row.columns:
+            val = row.iloc[0][stat]
+            print(f"[DEBUG] Value found for stat '{stat}': {val} (NaN: {pd.isna(val)})")
+            if pd.isna(val):
+                return 0.0
+            return val
+        print(f"[DEBUG] Stat '{stat}' not found in columns: {list(row.columns) if not row.empty else 'No row'}")
+        return 0.0
+
+    def predict_whiff_vs_contact(self, pitch_data):
+        """Predict whiff vs contact for a swing"""
+        try:
+            print("\n" + "="*50)
+            print("🔍 DEBUG: WHIFF VS CONTACT PREDICTION")
+            print("="*50)
+            
+            # Check model loading status
+            print(f"📊 Model Status:")
+            print(f"  - Whiff model loaded: {hasattr(self, 'whiff_model') and self.whiff_model is not None}")
+            print(f"  - Whiff preprocessor loaded: {hasattr(self, 'whiff_preprocessor') and self.whiff_preprocessor is not None}")
+            if hasattr(self, 'whiff_model_features'):
+                print(f"  - Expected features: {len(self.whiff_model_features) if self.whiff_model_features else 'None'}")
+            
+            # Apply pitcher averages for the specific pitch type
+            pitch_type = pitch_data.get('pitch_type', 'FF')
+            print(f"\n🎯 Pitch Type: {pitch_type}")
+            print(f"📈 Original pitch data: {pitch_data}")
+            
+            if self.pitcher_averages is not None and pitch_type in self.pitcher_averages:
+                pitcher_avg = self.pitcher_averages[pitch_type]
+                print(f"📊 Pitcher averages for {pitch_type}: {pitcher_avg}")
+                
+                # Override pitch data with pitcher averages
+                pitch_data.update({
+                    'release_speed': pitcher_avg.get('avg_release_speed', pitch_data.get('release_speed', 90)),
+                    'release_spin_rate': pitcher_avg.get('avg_release_spin_rate', pitch_data.get('release_spin_rate', 2200)),
+                    'release_extension': pitcher_avg.get('avg_release_extension', pitch_data.get('release_extension', 6.5)),
+                    'pfx_x': pitcher_avg.get('avg_pfx_x', pitch_data.get('pfx_x', 0)),
+                    'pfx_z': pitcher_avg.get('avg_pfx_z', pitch_data.get('pfx_z', 0)),
+                    'plate_x': pitcher_avg.get('avg_plate_x', pitch_data.get('plate_x', 0)),
+                    'plate_z': pitcher_avg.get('avg_plate_z', pitch_data.get('plate_z', 2.5)),
+                    'vx0': pitcher_avg.get('avg_vx0', pitch_data.get('vx0', 0)),
+                    'vy0': pitcher_avg.get('avg_vy0', pitch_data.get('vy0', -130)),
+                    'vz0': pitcher_avg.get('avg_vz0', pitch_data.get('vz0', -5)),
+                    'ax': pitcher_avg.get('avg_ax', pitch_data.get('ax', 0)),
+                    'ay': pitcher_avg.get('avg_ay', pitch_data.get('ay', 25)),
+                    'az': pitcher_avg.get('avg_az', pitch_data.get('az', -15)),
+                })
+                print(f"✓ Applied pitcher averages for {pitch_type} in whiff vs contact prediction")
+            else:
+                print(f"⚠️ No pitcher averages found for {pitch_type}")
+            
+            print(f"📈 Updated pitch data: {pitch_data}")
+            
+            # Use the same feature generation as swing vs no swing model
+            print("\n🔧 Using same feature generation as swing vs no swing model...")
+            feature_df = self.generate_features_for_pitch(pitch_data)
+            print(f"📊 Base feature DataFrame shape: {feature_df.shape}")
+            
+            # Add any additional features that the whiff model needs
+            print("\n🔧 Adding whiff-specific features...")
+            
+            # Calculate additional features that might be needed for whiff model
+            additional_features = {
+                'low_movement': 1.0 if feature_df.get('movement_magnitude', 0).iloc[0] < 5.0 else 0.0,
+                'movement_diff_from_avg': feature_df.get('movement_magnitude', 0).iloc[0] - 8.0,  # Assuming 8.0 is average
+                'batting_average_bip': self.get_hitter_avg_stat(pitch_type, 'batting_average_bip'),
+                'whiff_rate': self.get_hitter_avg_stat(pitch_type, 'whiff_rate'),
+                'field_out_rate_bip': self.get_hitter_avg_stat(pitch_type, 'field_out_rate_bip'),
+                'balls_in_play': self.get_hitter_avg_stat(pitch_type, 'balls_in_play'),
+                'total_swings': self.get_hitter_avg_stat(pitch_type, 'total_swings'),
+                'total_whiffs': self.get_hitter_avg_stat(pitch_type, 'total_whiffs'),
+            }
+            
+            # Add the additional features to the DataFrame
+            for feature_name, value in additional_features.items():
+                if feature_name not in feature_df.columns:
+                    feature_df[feature_name] = value
+                    print(f"  + Added {feature_name} = {value}")
+            
+            print(f"📊 Final feature DataFrame shape: {feature_df.shape}")
+            
+            # Check feature alignment with model
+            if hasattr(self, 'whiff_preprocessor') and self.whiff_preprocessor is not None:
+                # Try to get expected features from preprocessor
+                if hasattr(self.whiff_preprocessor, 'feature_names_in_'):
+                    expected_features = self.whiff_preprocessor.feature_names_in_
+                    print(f"📋 Expected features: {len(expected_features)}")
+                    print(f"📋 Actual features: {len(feature_df.columns)}")
+                    
+                    missing_cols = set(expected_features) - set(feature_df.columns)
+                    extra_cols = set(feature_df.columns) - set(expected_features)
+                    
+                    if missing_cols:
+                        print(f"⚠️ Missing columns: {missing_cols}")
+                        for col in missing_cols:
+                            feature_df[col] = 0.0
+                            print(f"  + Added {col} = 0.0")
+                    
+                    if extra_cols:
+                        print(f"⚠️ Extra columns: {extra_cols}")
+                    
+                    feature_df = feature_df[expected_features]
+                    print(f"✅ Feature alignment complete")
+                else:
+                    print("⚠️ Preprocessor doesn't have feature_names_in_ attribute")
+                    print("📋 Using all available features for prediction")
+            else:
+                print("⚠️ No preprocessor available for feature alignment")
+            
+            print("==== DEBUG: DataFrame dtypes before prediction ====")
+            print(feature_df.dtypes)
+            print("==== DEBUG: DataFrame head ====")
+            print(feature_df.head())
+            print("==== DEBUG: DataFrame values dtype ====")
+            print(feature_df.values.dtype)
+            print("==== DEBUG: First row types ====")
+            for i, val in enumerate(feature_df.values[0]):
+                print(f"Col {feature_df.columns[i]}: {val} (type: {type(val)})")
+            print("==== DEBUG: Checking for non-numeric values in DataFrame ====")
+            for col in feature_df.columns:
+                for val in feature_df[col]:
+                    if not (isinstance(val, (int, float, np.integer, np.floating)) or pd.isna(val)):
+                        print(f"⚠️ Column '{col}' has non-numeric value: {val} (type: {type(val)})")
+            
+            try:
+                prediction = self.whiff_model.predict(feature_df)[0]
+                prediction_proba = self.whiff_model.predict_proba(feature_df)[0]
+                confidence = max(prediction_proba)
+                
+                print(f"📊 Raw prediction: {prediction}")
+                print(f"📊 Prediction probabilities: {prediction_proba}")
+                print(f"📊 Confidence: {confidence}")
+                
+                result = {
+                    'is_whiff': bool(prediction),
+                    'prediction_confidence': confidence,
+                    'whiff_probability': prediction_proba[1] if len(prediction_proba) > 1 else prediction_proba[0],
+                    'contact_probability': prediction_proba[0] if len(prediction_proba) > 1 else 1 - prediction_proba[0],
+                    'details': f"Whiff: {prediction_proba[1]:.3f}, Contact: {prediction_proba[0]:.3f}"
+                }
+                print(f"🎯 Final Result: {result}")
+                print("="*50)
+                return result
+                
+            except Exception as e:
+                print(f"❌ Error during prediction: {e}")
+                print("==== FULL TRACEBACK ====")
+                traceback.print_exc()
+                print("==== DataFrame dtypes at error ====")
+                print(feature_df.dtypes)
+                print("==== DataFrame values at error ====")
+                print(feature_df.values)
+                print("==== DataFrame columns at error ====")
+                print(feature_df.columns)
+                print("==== DataFrame head at error ====")
+                print(feature_df.head())
+                print("==== END DEBUG ====")
+                # Fallback: return a default prediction
+                result = {
+                    'is_whiff': True,  # Default to whiff
+                    'prediction_confidence': 0.5,
+                    'whiff_probability': 0.6,
+                    'contact_probability': 0.4,
+                    'details': "Fallback prediction due to model error"
+                }
+                print(f"🎯 Fallback Result: {result}")
+                print("="*50)
+                return result
+        except Exception as e:
+            print(f"❌ Error in whiff vs contact prediction: {e}")
+            import traceback
+            traceback.print_exc()
+            return None
 
 def test_at_bat_simulation():
     """Test the at-bat simulation with sample pitches"""
@@ -526,4 +826,5 @@ def test_at_bat_simulation():
 
 if __name__ == "__main__":
     test_at_bat_simulation() 
+ 
  

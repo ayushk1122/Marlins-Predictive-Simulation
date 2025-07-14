@@ -426,42 +426,42 @@ export default function SimulateAtBatPage() {
                         <div className="w-full">
                             <label className="block font-semibold mb-2 text-gray-900">Opponent Team</label>
                             <select className="w-full border rounded px-3 py-2 text-gray-900" value={team || ""} onChange={e => { setTeam(e.target.value); setHitter(null); }}>
-                                <option value="" disabled>Choose a team</option>
-                                {DEMO_TEAMS.map(t => <option key={t} value={t}>{t}</option>)}
-                            </select>
-                        </div>
+                            <option value="" disabled>Choose a team</option>
+                            {DEMO_TEAMS.map(t => <option key={t} value={t}>{t}</option>)}
+                        </select>
+                    </div>
                         <div className="w-full">
                             <label className="block font-semibold mb-2 text-gray-900">Hitter</label>
                             <select className="w-full border rounded px-3 py-2 text-gray-900" value={hitter || ""} onChange={e => setHitter(e.target.value)} disabled={!team}>
-                                <option value="" disabled>Choose a hitter</option>
-                                {team && DEMO_LINEUPS[team].map(h => <option key={h} value={h}>{h}</option>)}
-                            </select>
-                        </div>
+                            <option value="" disabled>Choose a hitter</option>
+                            {team && DEMO_LINEUPS[team].map(h => <option key={h} value={h}>{h}</option>)}
+                        </select>
+                    </div>
                         <div className="w-full">
                             <label className="block font-semibold mb-2 text-gray-900">Pitch Type</label>
                             <select className="w-full border rounded px-3 py-2 text-gray-900" value={pitchType || ""} onChange={e => setPitchType(e.target.value)} disabled={!pitcher || loadingPitches || pitchTypes.length === 0 || !atBatActive} style={{ color: pitchType ? getPitchColor(pitchType, pitchTypes) : undefined }}>
                                 <option value="" disabled>{loadingPitches ? "Loading..." : !atBatActive ? "Start at-bat first" : "Choose pitch"}</option>
-                                {pitchTypes.map((pt, i) => (
-                                    <option key={pt} value={pt} style={{ color: getPitchColor(pt, pitchTypes) }}>{pt}</option>
-                                ))}
-                            </select>
-                            {pitchError && <div className="text-red-600 text-xs mt-1">{pitchError}</div>}
-                        </div>
+                            {pitchTypes.map((pt, i) => (
+                                <option key={pt} value={pt} style={{ color: getPitchColor(pt, pitchTypes) }}>{pt}</option>
+                            ))}
+                        </select>
+                        {pitchError && <div className="text-red-600 text-xs mt-1">{pitchError}</div>}
+                    </div>
                         <div className="w-full flex justify-center">
-                            {!atBatActive ? (
+                            {atBatActive ? (
+                                <button
+                                    className="bg-red-600 text-white px-6 py-3 rounded-lg font-semibold text-lg hover:bg-red-700 w-full"
+                                    onClick={handleResetAtBat}
+                                >
+                                    Reset At-Bat
+                                </button>
+                            ) : (
                                 <button
                                     className="bg-green-600 text-white px-6 py-3 rounded-lg font-semibold text-lg hover:bg-green-700 disabled:bg-gray-400 w-full"
                                     disabled={!pitcher || !hitter || startingAtBat}
                                     onClick={handleStartAtBat}
                                 >
                                     {startingAtBat ? "Starting..." : "Start At-Bat"}
-                                </button>
-                            ) : (
-                                <button
-                                    className="bg-red-600 text-white px-6 py-3 rounded-lg font-semibold text-lg hover:bg-red-700 w-full"
-                                    onClick={handleResetAtBat}
-                                >
-                                    Reset At-Bat
                                 </button>
                             )}
                         </div>
@@ -524,7 +524,7 @@ export default function SimulateAtBatPage() {
                                 <div className="space-y-1">
                                     {pitchSequence.map((pitch, index) => (
                                         <div key={index} className="text-sm">
-                                            <span className="font-medium">Pitch {index + 1}:</span> {pitch.outcome} ({pitch.pitch_type || simulationResult?.pitch_type || "?"})
+                                            <span className="font-medium">Pitch {index + 1}:</span> {pitch.outcome}{pitch.pitch_type ? ` (${pitch.pitch_type})` : ''}
                                         </div>
                                     ))}
                                 </div>

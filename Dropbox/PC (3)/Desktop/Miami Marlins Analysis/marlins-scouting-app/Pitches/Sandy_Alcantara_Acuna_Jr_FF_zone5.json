@@ -1,0 +1,17 @@
+{
+  "pitcher": "Sandy Alc\u00e1ntara",
+  "hitter": "Acuna Jr.",
+  "pitch_type": "FF",
+  "plate_x": -0.07905587443349726,
+  "plate_z": 2.4550552368164062,
+  "zone": 5,
+  "balls": 0,
+  "strikes": 0,
+  "handedness": "R",
+  "in_strike_zone": true,
+  "outcome": "Called Strike",
+  "confidence": 0.8582994771815086,
+  "swing_probability": 0.3436491858128959,
+  "timestamp": "2025-07-14T14:23:55.884005",
+  "details": "Pitch at (-0.08, 2.46) - FF pitch - Count: 0-0"
+}
