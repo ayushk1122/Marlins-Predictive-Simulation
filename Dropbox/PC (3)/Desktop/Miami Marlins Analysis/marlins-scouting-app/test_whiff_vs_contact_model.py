@@ -166,17 +166,40 @@ def prepare_test_features(df):
 def test_threshold_values(y_true, y_proba):
     """Test different threshold values to find optimal whiff prediction threshold"""
     print("\n" + "="*60)
-    print("THRESHOLD OPTIMIZATION ANALYSIS")
+    print("CONFIDENCE DIFFERENCE THRESHOLD OPTIMIZATION")
     print("="*60)
     
-    thresholds = [0.5, 0.6, 0.7, 0.75, 0.8, 0.85, 0.9, 0.95]
+    # Test confidence difference thresholds
+    confidence_diff_thresholds = [0.05, 0.10, 0.15, 0.20, 0.25, 0.30]
+    whiff_threshold = 0.35
+    contact_threshold = 0.75
     results = []
     
-    print(f"{'Threshold':<12} {'Whiff Pred':<10} {'Whiff Prec':<10} {'Whiff Recall':<12} {'Balanced Acc':<12}")
-    print("-" * 60)
+    print(f"{'Conf Diff Thr':<12} {'Whiff Pred':<10} {'Whiff Prec':<10} {'Whiff Recall':<12} {'Balanced Acc':<12} {'Uncertain':<10}")
+    print("-" * 75)
     
-    for threshold in thresholds:
-        y_pred = np.where(y_proba[:, 1] >= threshold, 1, 0)
+    for conf_diff_thresh in confidence_diff_thresholds:
+        # Calculate probability differences
+        contact_proba = y_proba[:, 0]
+        whiff_proba = y_proba[:, 1]
+        proba_diff = contact_proba - whiff_proba
+        
+        # Apply confidence difference threshold logic
+        y_pred = np.where(
+            whiff_proba >= whiff_threshold, 1,  # High whiff prob -> predict whiff
+            np.where(
+                contact_proba >= contact_threshold, 0,  # High contact prob -> predict contact
+                np.where(
+                    proba_diff >= conf_diff_thresh, 0,  # Sufficient confidence difference -> predict contact
+                    1  # Default to whiff for uncertain cases
+                )
+            )
+        )
+        
+        # Calculate uncertain cases (defaulted to whiff)
+        uncertain_cases = ((whiff_proba < whiff_threshold) & 
+                          (contact_proba < contact_threshold) & 
+                          (proba_diff < conf_diff_thresh)).sum()
         
         # Calculate metrics for imbalanced data
         whiff_precision = precision_score(y_true, y_pred, pos_label=1, zero_division=0)
@@ -184,27 +207,25 @@ def test_threshold_values(y_true, y_proba):
         balanced_acc = balanced_accuracy_score(y_true, y_pred)
         whiff_predictions = y_pred.sum()
         
+        print(f"{conf_diff_thresh:<12.2f} {whiff_predictions:<10d} {whiff_precision:<10.3f} {whiff_recall:<12.3f} {balanced_acc:<12.3f} {uncertain_cases:<10d}")
+        
         results.append({
-            'threshold': threshold,
+            'confidence_diff_threshold': conf_diff_thresh,
             'whiff_pred': whiff_predictions,
             'whiff_precision': whiff_precision,
             'whiff_recall': whiff_recall,
-            'balanced_acc': balanced_acc
+            'balanced_acc': balanced_acc,
+            'uncertain_cases': uncertain_cases
         })
-        
-        print(f"{threshold:<12.2f} {whiff_predictions:<10d} {whiff_precision:<10.3f} {whiff_recall:<12.3f} {balanced_acc:<12.3f}")
     
-    # Find best threshold for whiff precision (fewer false positives)
-    best_precision = max(results, key=lambda x: x['whiff_precision'])
-    print(f"\nBest threshold for whiff precision: {best_precision['threshold']:.2f} (precision: {best_precision['whiff_precision']:.3f})")
-    
-    # Find best threshold for whiff recall (catch more whiffs)
-    best_recall = max(results, key=lambda x: x['whiff_recall'])
-    print(f"Best threshold for whiff recall: {best_recall['threshold']:.2f} (recall: {best_recall['whiff_recall']:.3f})")
-    
-    # Find best threshold for balanced accuracy
-    best_balanced = max(results, key=lambda x: x['balanced_acc'])
-    print(f"Best threshold for balanced accuracy: {best_balanced['threshold']:.2f} (balanced acc: {best_balanced['balanced_acc']:.3f})")
+    # Find best threshold combination
+    best_result = max(results, key=lambda x: x['balanced_acc'])
+    print(f"\nBest confidence difference threshold:")
+    print(f"  Confidence difference threshold: {best_result['confidence_diff_threshold']:.2f}")
+    print(f"  Balanced accuracy: {best_result['balanced_acc']:.3f}")
+    print(f"  Whiff precision: {best_result['whiff_precision']:.3f}")
+    print(f"  Whiff recall: {best_result['whiff_recall']:.3f}")
+    print(f"  Uncertain cases defaulted to whiff: {best_result['uncertain_cases']}")
     
     return results
 
@@ -331,6 +352,125 @@ def analyze_whiff_predictions(df, y_true, y_pred, probabilities):
             zone_accuracy = (y_true[zone_mask] == y_pred[zone_mask]).mean()
             zone_count = zone_mask.sum()
             print(f"  Zone {zone}: {zone_accuracy:.3f} accuracy ({zone_count} swings)")
+    
+    # DETAILED ANALYSIS OF MISCLASSIFIED WHIFFS
+    print(f"\n" + "="*80)
+    print("DETAILED ANALYSIS OF WHIFFS MISCLASSIFIED AS CONTACTS")
+    print("="*80)
+    
+    # Find whiffs misclassified as contacts
+    whiff_misclassified_as_contact = (y_true == 1) & (y_pred == 0)
+    misclassified_whiffs = df[whiff_misclassified_as_contact].copy()
+    
+    if len(misclassified_whiffs) > 0:
+        print(f"\nFound {len(misclassified_whiffs)} whiffs misclassified as contacts")
+        print(f"This represents {len(misclassified_whiffs)/whiff_count*100:.1f}% of all actual whiffs")
+        
+        # Add prediction probabilities to the misclassified data
+        misclassified_indices = np.where(whiff_misclassified_as_contact)[0]
+        misclassified_whiffs['whiff_probability'] = [probabilities[idx][1] for idx in misclassified_indices]
+        misclassified_whiffs['contact_probability'] = [probabilities[idx][0] for idx in misclassified_indices]
+        misclassified_whiffs['confidence'] = [max(probabilities[idx]) for idx in misclassified_indices]
+        
+        # Basic statistics
+        print(f"\nBASIC STATISTICS:")
+        print(f"  Average whiff probability: {misclassified_whiffs['whiff_probability'].mean():.3f}")
+        print(f"  Average contact probability: {misclassified_whiffs['contact_probability'].mean():.3f}")
+        print(f"  Average confidence: {misclassified_whiffs['confidence'].mean():.3f}")
+        print(f"  Median whiff probability: {misclassified_whiffs['whiff_probability'].median():.3f}")
+        
+        # Pitch type analysis
+        print(f"\nPITCH TYPE ANALYSIS:")
+        pitch_type_counts = misclassified_whiffs['pitch_type'].value_counts()
+        for pitch_type, count in pitch_type_counts.head(10).items():
+            avg_whiff_prob = misclassified_whiffs[misclassified_whiffs['pitch_type'] == pitch_type]['whiff_probability'].mean()
+            print(f"  {pitch_type}: {count} misclassifications (avg whiff prob: {avg_whiff_prob:.3f})")
+        
+        # Zone analysis
+        print(f"\nZONE ANALYSIS:")
+        zone_counts = misclassified_whiffs['zone'].value_counts()
+        for zone, count in zone_counts.head(10).items():
+            avg_whiff_prob = misclassified_whiffs[misclassified_whiffs['zone'] == zone]['whiff_probability'].mean()
+            print(f"  Zone {zone}: {count} misclassifications (avg whiff prob: {avg_whiff_prob:.3f})")
+        
+        # Velocity analysis
+        print(f"\nVELOCITY ANALYSIS:")
+        low_vel = misclassified_whiffs[misclassified_whiffs['release_speed'] < 85]
+        high_vel = misclassified_whiffs[misclassified_whiffs['release_speed'] > 95]
+        mid_vel = misclassified_whiffs[(misclassified_whiffs['release_speed'] >= 85) & (misclassified_whiffs['release_speed'] <= 95)]
+        
+        print(f"  Low velocity (<85 mph): {len(low_vel)} misclassifications (avg whiff prob: {low_vel['whiff_probability'].mean():.3f})")
+        print(f"  Mid velocity (85-95 mph): {len(mid_vel)} misclassifications (avg whiff prob: {mid_vel['whiff_probability'].mean():.3f})")
+        print(f"  High velocity (>95 mph): {len(high_vel)} misclassifications (avg whiff prob: {high_vel['whiff_probability'].mean():.3f})")
+        
+        # Movement analysis
+        print(f"\nMOVEMENT ANALYSIS:")
+        low_movement = misclassified_whiffs[misclassified_whiffs['movement_magnitude'] < 2]
+        high_movement = misclassified_whiffs[misclassified_whiffs['movement_magnitude'] > 4]
+        mid_movement = misclassified_whiffs[(misclassified_whiffs['movement_magnitude'] >= 2) & (misclassified_whiffs['movement_magnitude'] <= 4)]
+        
+        print(f"  Low movement (<2): {len(low_movement)} misclassifications (avg whiff prob: {low_movement['whiff_probability'].mean():.3f})")
+        print(f"  Mid movement (2-4): {len(mid_movement)} misclassifications (avg whiff prob: {mid_movement['whiff_probability'].mean():.3f})")
+        print(f"  High movement (>4): {len(high_movement)} misclassifications (avg whiff prob: {high_movement['whiff_probability'].mean():.3f})")
+        
+        # Count analysis
+        print(f"\nCOUNT ANALYSIS:")
+        early_count = misclassified_whiffs[(misclassified_whiffs['balls'] <= 1) & (misclassified_whiffs['strikes'] <= 1)]
+        pressure_count = misclassified_whiffs[(misclassified_whiffs['strikes'] >= 2) | (misclassified_whiffs['balls'] >= 3)]
+        other_count = misclassified_whiffs[~((misclassified_whiffs['balls'] <= 1) & (misclassified_whiffs['strikes'] <= 1)) & ~((misclassified_whiffs['strikes'] >= 2) | (misclassified_whiffs['balls'] >= 3))]
+        
+        print(f"  Early count (≤1 ball, ≤1 strike): {len(early_count)} misclassifications (avg whiff prob: {early_count['whiff_probability'].mean():.3f})")
+        print(f"  Pressure count (≥2 strikes or ≥3 balls): {len(pressure_count)} misclassifications (avg whiff prob: {pressure_count['whiff_probability'].mean():.3f})")
+        print(f"  Other counts: {len(other_count)} misclassifications (avg whiff prob: {other_count['whiff_probability'].mean():.3f})")
+        
+        # Confidence analysis
+        print(f"\nCONFIDENCE ANALYSIS:")
+        low_conf = misclassified_whiffs[misclassified_whiffs['confidence'] < 0.6]
+        med_conf = misclassified_whiffs[(misclassified_whiffs['confidence'] >= 0.6) & (misclassified_whiffs['confidence'] < 0.8)]
+        high_conf = misclassified_whiffs[misclassified_whiffs['confidence'] >= 0.8]
+        
+        print(f"  Low confidence (<60%): {len(low_conf)} misclassifications (avg whiff prob: {low_conf['whiff_probability'].mean():.3f})")
+        print(f"  Medium confidence (60-80%): {len(med_conf)} misclassifications (avg whiff prob: {med_conf['whiff_probability'].mean():.3f})")
+        print(f"  High confidence (≥80%): {len(high_conf)} misclassifications (avg whiff prob: {high_conf['whiff_probability'].mean():.3f})")
+        
+        # Show examples of misclassified whiffs
+        print(f"\nEXAMPLES OF MISCLASSIFIED WHIFFS:")
+        print(f"{'Pitch Type':<8} {'Zone':<4} {'Velocity':<8} {'Movement':<8} {'Count':<6} {'Whiff Prob':<10} {'Contact Prob':<12}")
+        print("-" * 80)
+        
+        for i in range(min(10, len(misclassified_whiffs))):
+            row = misclassified_whiffs.iloc[i]
+            print(f"{row['pitch_type']:<8} {row['zone']:<4.0f} {row['release_speed']:<8.1f} {row['movement_magnitude']:<8.2f} {row['balls']:.0f}-{row['strikes']:<3.0f} {row['whiff_probability']:<10.3f} {row['contact_probability']:<12.3f}")
+        
+        # Recommendations
+        print(f"\nRECOMMENDATIONS TO IMPROVE WHIFF DETECTION:")
+        print("-" * 60)
+        
+        # Find patterns that could help
+        high_whiff_prob_misclassified = misclassified_whiffs[misclassified_whiffs['whiff_probability'] > 0.4]
+        if len(high_whiff_prob_misclassified) > 0:
+            print(f"  {len(high_whiff_prob_misclassified)} whiffs had >40% whiff probability but were misclassified")
+            print(f"  Consider lowering whiff threshold to catch these")
+        
+        # Identify problematic pitch types
+        problematic_pitches = misclassified_whiffs.groupby('pitch_type')['whiff_probability'].mean().sort_values(ascending=False)
+        print(f"  Problematic pitch types (high whiff prob but misclassified):")
+        for pitch_type, avg_prob in problematic_pitches.head(5).items():
+            count = len(misclassified_whiffs[misclassified_whiffs['pitch_type'] == pitch_type])
+            print(f"    {pitch_type}: {count} misclassifications, avg whiff prob: {avg_prob:.3f}")
+        
+        # Identify problematic zones
+        problematic_zones = misclassified_whiffs.groupby('zone')['whiff_probability'].mean().sort_values(ascending=False)
+        print(f"  Problematic zones (high whiff prob but misclassified):")
+        for zone, avg_prob in problematic_zones.head(5).items():
+            count = len(misclassified_whiffs[misclassified_whiffs['zone'] == zone])
+            print(f"    Zone {zone}: {count} misclassifications, avg whiff prob: {avg_prob:.3f}")
+        
+        print(f"\n  Consider adding features specific to these problematic areas")
+        print(f"  Consider adjusting thresholds based on pitch type and zone")
+        
+    else:
+        print(f"\nNo whiffs were misclassified as contacts!")
 
 def main():
     """Main function to test whiff vs contact model"""
@@ -405,9 +545,31 @@ def main():
     try:
         y_proba = model.predict_proba(X)
         
-        # Apply confidence threshold for whiff predictions
-        whiff_threshold = 0.50  # 50% confidence required to predict whiff
-        y_pred_threshold = np.where(y_proba[:, 1] >= whiff_threshold, 1, 0)  # 1 = whiff, 0 = contact
+        # Apply confidence difference threshold approach
+        whiff_threshold = 0.35  # Lower threshold for whiffs (minority class)
+        contact_threshold = 0.75  # Higher threshold for contacts (majority class)
+        confidence_diff_threshold = 0.15  # Minimum difference required to predict contact over whiff
+        
+        # Calculate probability differences
+        contact_proba = y_proba[:, 0]
+        whiff_proba = y_proba[:, 1]
+        proba_diff = contact_proba - whiff_proba
+        
+        # Apply confidence difference threshold logic:
+        # 1. If whiff prob >= 35%, predict whiff
+        # 2. If contact prob >= 75%, predict contact
+        # 3. If neither threshold met, require minimum confidence difference to predict contact
+        # 4. Otherwise, predict whiff (safer default for uncertain cases)
+        y_pred_threshold = np.where(
+            whiff_proba >= whiff_threshold, 1,  # High whiff prob -> predict whiff
+            np.where(
+                contact_proba >= contact_threshold, 0,  # High contact prob -> predict contact
+                np.where(
+                    proba_diff >= confidence_diff_threshold, 0,  # Sufficient confidence difference -> predict contact
+                    1  # Default to whiff for uncertain cases
+                )
+            )
+        )
         
         # Standard predictions (no threshold)
         y_pred_standard = model.predict(X)
@@ -417,11 +579,20 @@ def main():
         print(f"Actual whiffs: {balanced_y_true.sum()} (50.0%)")
         print(f"Actual contacts: {len(balanced_swing_df) - balanced_y_true.sum()} (50.0%)")
         print(f"Standard predicted whiffs: {y_pred_standard.sum()}")
-        print(f"Threshold predicted whiffs (≥{whiff_threshold*100:.0f}%): {y_pred_threshold.sum()}")
+        print(f"Confidence Difference predicted whiffs: {y_pred_threshold.sum()}")
+        
+        # Calculate how many uncertain cases defaulted to whiff
+        uncertain_cases = ((whiff_proba < whiff_threshold) & 
+                          (contact_proba < contact_threshold) & 
+                          (proba_diff < confidence_diff_threshold)).sum()
+        
+        print(f"Uncertain cases defaulted to whiff: {uncertain_cases}")
+        print(f"Confidence difference threshold: {confidence_diff_threshold*100:.0f}%")
         
         print(f"\nBalanced Dataset Analysis:")
         print(f"  Equal representation of contacts and whiffs")
         print(f"  Overall accuracy now reflects true model performance!")
+        print(f"  Confidence difference approach prioritizes whiff detection for uncertain cases")
         
         # Evaluate both approaches
         accuracy_standard = accuracy_score(balanced_y_true, y_pred_standard)
@@ -433,7 +604,7 @@ def main():
         print("\nStandard Classification Report:")
         print(classification_report(balanced_y_true, y_pred_standard, target_names=['Contact', 'Whiff']))
         
-        print(f"\nThreshold Classification Report (≥{whiff_threshold*100:.0f}%):")
+        print(f"\nConfidence Difference Classification Report:")
         print(classification_report(balanced_y_true, y_pred_threshold, target_names=['Contact', 'Whiff']))
         
         print("\nStandard Confusion Matrix:")
@@ -443,10 +614,9 @@ def main():
         print(f"Actual Contact  {cm_standard[0,0]:6d}  {cm_standard[0,1]:6d}")
         print(f"      Whiff     {cm_standard[1,0]:6d}  {cm_standard[1,1]:6d}")
         
-        print(f"\nThreshold Confusion Matrix (≥{whiff_threshold*100:.0f}%):")
+        print(f"\nConfidence Difference Confusion Matrix:")
         cm_threshold = confusion_matrix(balanced_y_true, y_pred_threshold)
         print("          Predicted")
-        print("          Contact  Whiff")
         print("          Contact  Whiff")
         print(f"Actual Contact  {cm_threshold[0,0]:6d}  {cm_threshold[0,1]:6d}")
         print(f"      Whiff     {cm_threshold[1,0]:6d}  {cm_threshold[1,1]:6d}")
@@ -467,3 +637,11 @@ def main():
 
 if __name__ == "__main__":
     main() 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 

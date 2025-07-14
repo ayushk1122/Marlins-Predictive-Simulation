@@ -18,8 +18,8 @@ warnings.filterwarnings('ignore')
 def load_career_data():
     """Load Acuna Jr.'s complete career data"""
     try:
-        df = pd.read_csv('ronald_acuna_jr_complete_career_statcast.csv')
-        print(f"✓ Loaded Acuna Jr. data with {len(df)} pitches")
+        df = pd.read_csv('ronald_acuna_jr_2023_2024_statcast.csv')
+        print(f"✓ Test Loaded Acuna Jr. data with {len(df)} pitches")
         return df
     except Exception as e:
         print(f"✗ Error loading career data: {e}")
@@ -418,3 +418,11 @@ def main():
 
 if __name__ == "__main__":
     main() 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 

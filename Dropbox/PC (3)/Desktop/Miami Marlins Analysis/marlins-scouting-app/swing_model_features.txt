@@ -1,0 +1,739 @@
+=== Swing vs No Swing Model Features ===
+
+Total features: 360
+
+Complete feature list:
+  1. release_speed
+  2. release_spin_rate
+  3. plate_x
+  4. plate_z
+  5. zone
+  6. sz_top
+  7. sz_bot
+  8. balls
+  9. strikes
+ 10. pitch_type
+ 11. api_break_x_batter_in
+ 12. api_break_z_with_gravity
+ 13. zone_distance
+ 14. movement_magnitude
+ 15. count_pressure
+ 16. count_total
+ 17. behind_in_count
+ 18. ahead_in_count
+ 19. two_strikes
+ 20. three_balls
+ 21. in_strike_zone
+ 22. far_from_zone
+ 23. high_pitch
+ 24. low_pitch
+ 25. inside_pitch
+ 26. outside_pitch
+ 27. is_fastball
+ 28. is_breaking_ball
+ 29. is_offspeed
+ 30. high_velocity
+ 31. low_velocity
+ 32. velocity_movement_ratio
+ 33. high_movement
+ 34. low_movement
+ 35. movement_ratio
+ 36. zone_distance_x_count_pressure
+ 37. movement_x_count_pressure
+ 38. in_zone_x_two_strikes
+ 39. far_from_zone_x_ahead
+ 40. velocity_diff_from_avg
+ 41. movement_diff_from_avg
+ 42. zone_corner
+ 43. zone_heart
+ 44. zone_shadow
+ 45. batting_average_bip
+ 46. whiff_rate
+ 47. field_out_rate_bip
+ 48. balls_in_play
+ 49. total_swings
+ 50. total_whiffs
+ 51. arm_side_break
+ 52. movement_direction
+ 53. spin_axis_rad
+ 54. spin_efficiency
+ 55. movement_per_mph
+ 56. expected_movement
+ 57. movement_deception
+ 58. plate_x_norm
+ 59. plate_z_norm
+ 60. plate_x_norm_x_movement
+ 61. plate_z_norm_x_movement
+ 62. early_count
+ 63. middle_count
+ 64. late_count
+ 65. pressure_count
+ 66. early_count_penalty
+ 67. early_count_zone_penalty
+ 68. early_count_outside_penalty
+ 69. count_swing_rate_adjustment
+ 70. early_count_location_penalty
+ 71. early_count_breaking_penalty
+ 72. early_count_offspeed_penalty
+ 73. zone_edge_distance
+ 74. zone_top_distance
+ 75. zone_bottom_distance
+ 76. closest_zone_edge
+ 77. full_count
+ 78. hitters_count
+ 79. pitchers_count
+ 80. neutral_count
+ 81. zone_quadrant
+ 82. velocity_drop
+ 83. breaking_ball_high
+ 84. offspeed_low
+ 85. inning_late
+ 86. close_game
+ 87. pitch_in_at_bat
+ 88. first_pitch
+ 89. last_pitch
+ 90. velocity_bin
+ 91. velocity_std
+ 92. horizontal_movement
+ 93. vertical_movement
+ 94. high_horizontal_movement
+ 95. high_vertical_movement
+ 96. zone_center_distance
+ 97. count_advantage
+ 98. pressure_situation
+ 99. must_swing
+100. can_take
+101. fastball_high
+102. breaking_ball_low
+103. offspeed_middle
+104. pitch_type_change
+105. location_quadrant
+106. location_extreme
+107. spin_movement_correlation
+108. high_spin
+109. low_spin
+110. late_inning
+111. close_score
+112. high_leverage
+113. count_ratio
+114. behind_by_two
+115. ahead_by_two
+116. full_count_pressure
+117. in_zone_two_strikes
+118. out_zone_ahead
+119. edge_zone_decision
+120. velocity_surprise
+121. velocity_consistency
+122. breaking_ball_velocity
+123. high_movement_fastball
+124. low_movement_breaking
+125. unexpected_movement
+126. corner_pitch
+127. heart_pitch
+128. shadow_pitch
+129. extreme_location
+130. velocity_x_location
+131. pitch_type_x_location
+132. count_x_zone
+133. early_count_swing
+134. late_count_take
+135. pressure_swing
+136. opportunity_take
+137. early_count_low_vel_penalty
+138. early_count_high_vel_penalty
+139. zone_quadrant_encoded
+140. location_quadrant_encoded
+141. count_advantage_encoded
+142. count_field_out_rate
+143. count_hit_rate
+144. count_whiff_rate
+145. pitch_type_field_out_rate
+146. pitch_type_hit_rate
+147. pitch_type_whiff_rate
+148. acuna_zone_1_swing_rate
+149. acuna_zone_2_swing_rate
+150. acuna_zone_3_swing_rate
+151. acuna_zone_4_swing_rate
+152. acuna_zone_5_swing_rate
+153. acuna_zone_6_swing_rate
+154. acuna_zone_7_swing_rate
+155. acuna_zone_8_swing_rate
+156. acuna_zone_9_swing_rate
+157. acuna_zone_10_swing_rate
+158. acuna_zone_11_swing_rate
+159. acuna_zone_12_swing_rate
+160. acuna_zone_13_swing_rate
+161. acuna_zone_14_swing_rate
+162. acuna_FF_swing_rate
+163. acuna_SI_swing_rate
+164. acuna_SL_swing_rate
+165. acuna_CU_swing_rate
+166. acuna_CH_swing_rate
+167. acuna_FC_swing_rate
+168. acuna_ST_swing_rate
+169. acuna_KC_swing_rate
+170. acuna_FS_swing_rate
+171. acuna_count_0_0_swing_rate
+172. acuna_count_0_0_FF_swing_rate
+173. acuna_count_0_0_SI_swing_rate
+174. acuna_count_0_0_SL_swing_rate
+175. acuna_count_0_0_CU_swing_rate
+176. acuna_count_0_0_CH_swing_rate
+177. acuna_count_0_0_FC_swing_rate
+178. acuna_count_0_0_ST_swing_rate
+179. acuna_count_0_0_KC_swing_rate
+180. acuna_count_0_0_FS_swing_rate
+181. acuna_advantage_count_0_0_swing_rate
+182. acuna_count_0_1_swing_rate
+183. acuna_count_0_1_FF_swing_rate
+184. acuna_count_0_1_SI_swing_rate
+185. acuna_count_0_1_SL_swing_rate
+186. acuna_count_0_1_CU_swing_rate
+187. acuna_count_0_1_CH_swing_rate
+188. acuna_count_0_1_FC_swing_rate
+189. acuna_count_0_1_ST_swing_rate
+190. acuna_count_0_1_KC_swing_rate
+191. acuna_count_0_1_FS_swing_rate
+192. acuna_advantage_count_0_1_swing_rate
+193. acuna_count_0_2_swing_rate
+194. acuna_count_0_2_FF_swing_rate
+195. acuna_count_0_2_SI_swing_rate
+196. acuna_count_0_2_SL_swing_rate
+197. acuna_count_0_2_CU_swing_rate
+198. acuna_count_0_2_CH_swing_rate
+199. acuna_count_0_2_FC_swing_rate
+200. acuna_count_0_2_ST_swing_rate
+201. acuna_count_0_2_KC_swing_rate
+202. acuna_count_0_2_FS_swing_rate
+203. acuna_advantage_count_0_2_swing_rate
+204. acuna_count_1_0_swing_rate
+205. acuna_count_1_0_FF_swing_rate
+206. acuna_count_1_0_SI_swing_rate
+207. acuna_count_1_0_SL_swing_rate
+208. acuna_count_1_0_CU_swing_rate
+209. acuna_count_1_0_CH_swing_rate
+210. acuna_count_1_0_FC_swing_rate
+211. acuna_count_1_0_ST_swing_rate
+212. acuna_count_1_0_KC_swing_rate
+213. acuna_count_1_0_FS_swing_rate
+214. acuna_advantage_count_1_0_swing_rate
+215. acuna_count_1_1_swing_rate
+216. acuna_count_1_1_FF_swing_rate
+217. acuna_count_1_1_SI_swing_rate
+218. acuna_count_1_1_SL_swing_rate
+219. acuna_count_1_1_CU_swing_rate
+220. acuna_count_1_1_CH_swing_rate
+221. acuna_count_1_1_FC_swing_rate
+222. acuna_count_1_1_ST_swing_rate
+223. acuna_count_1_1_KC_swing_rate
+224. acuna_count_1_1_FS_swing_rate
+225. acuna_advantage_count_1_1_swing_rate
+226. acuna_count_1_2_swing_rate
+227. acuna_count_1_2_FF_swing_rate
+228. acuna_count_1_2_SI_swing_rate
+229. acuna_count_1_2_SL_swing_rate
+230. acuna_count_1_2_CU_swing_rate
+231. acuna_count_1_2_CH_swing_rate
+232. acuna_count_1_2_FC_swing_rate
+233. acuna_count_1_2_ST_swing_rate
+234. acuna_count_1_2_KC_swing_rate
+235. acuna_count_1_2_FS_swing_rate
+236. acuna_advantage_count_1_2_swing_rate
+237. acuna_count_2_0_swing_rate
+238. acuna_count_2_0_FF_swing_rate
+239. acuna_count_2_0_SI_swing_rate
+240. acuna_count_2_0_SL_swing_rate
+241. acuna_count_2_0_CU_swing_rate
+242. acuna_count_2_0_CH_swing_rate
+243. acuna_count_2_0_FC_swing_rate
+244. acuna_count_2_0_ST_swing_rate
+245. acuna_count_2_0_KC_swing_rate
+246. acuna_count_2_0_FS_swing_rate
+247. acuna_advantage_count_2_0_swing_rate
+248. acuna_count_2_1_swing_rate
+249. acuna_count_2_1_FF_swing_rate
+250. acuna_count_2_1_SI_swing_rate
+251. acuna_count_2_1_SL_swing_rate
+252. acuna_count_2_1_CU_swing_rate
+253. acuna_count_2_1_CH_swing_rate
+254. acuna_count_2_1_FC_swing_rate
+255. acuna_count_2_1_ST_swing_rate
+256. acuna_count_2_1_KC_swing_rate
+257. acuna_count_2_1_FS_swing_rate
+258. acuna_advantage_count_2_1_swing_rate
+259. acuna_count_2_2_swing_rate
+260. acuna_count_2_2_FF_swing_rate
+261. acuna_count_2_2_SI_swing_rate
+262. acuna_count_2_2_SL_swing_rate
+263. acuna_count_2_2_CU_swing_rate
+264. acuna_count_2_2_CH_swing_rate
+265. acuna_count_2_2_FC_swing_rate
+266. acuna_count_2_2_ST_swing_rate
+267. acuna_count_2_2_KC_swing_rate
+268. acuna_count_2_2_FS_swing_rate
+269. acuna_advantage_count_2_2_swing_rate
+270. acuna_count_3_0_swing_rate
+271. acuna_count_3_0_FF_swing_rate
+272. acuna_count_3_0_SI_swing_rate
+273. acuna_count_3_0_SL_swing_rate
+274. acuna_count_3_0_CU_swing_rate
+275. acuna_count_3_0_CH_swing_rate
+276. acuna_count_3_0_FC_swing_rate
+277. acuna_count_3_0_ST_swing_rate
+278. acuna_count_3_0_KC_swing_rate
+279. acuna_count_3_0_FS_swing_rate
+280. acuna_advantage_count_3_0_swing_rate
+281. acuna_count_3_1_swing_rate
+282. acuna_count_3_1_FF_swing_rate
+283. acuna_count_3_1_SI_swing_rate
+284. acuna_count_3_1_SL_swing_rate
+285. acuna_count_3_1_CU_swing_rate
+286. acuna_count_3_1_CH_swing_rate
+287. acuna_count_3_1_FC_swing_rate
+288. acuna_count_3_1_ST_swing_rate
+289. acuna_count_3_1_KC_swing_rate
+290. acuna_count_3_1_FS_swing_rate
+291. acuna_advantage_count_3_1_swing_rate
+292. acuna_count_3_2_swing_rate
+293. acuna_count_3_2_FF_swing_rate
+294. acuna_count_3_2_SI_swing_rate
+295. acuna_count_3_2_SL_swing_rate
+296. acuna_count_3_2_CU_swing_rate
+297. acuna_count_3_2_CH_swing_rate
+298. acuna_count_3_2_FC_swing_rate
+299. acuna_count_3_2_ST_swing_rate
+300. acuna_count_3_2_KC_swing_rate
+301. acuna_count_3_2_FS_swing_rate
+302. acuna_advantage_count_3_2_swing_rate
+303. acuna_overall_swing_rate
+304. acuna_ahead_swing_rate
+305. acuna_behind_swing_rate
+306. acuna_two_strikes_swing_rate
+307. acuna_low_velocity_swing_rate
+308. acuna_high_velocity_swing_rate
+309. acuna_zone_heart_swing_rate
+310. acuna_zone_corner_swing_rate
+311. acuna_zone_shadow_swing_rate
+312. acuna_zone_heart_hit_rate
+313. acuna_zone_corner_hit_rate
+314. acuna_zone_shadow_hit_rate
+315. acuna_FF_hit_rate
+316. acuna_SI_hit_rate
+317. acuna_SL_hit_rate
+318. acuna_CU_hit_rate
+319. acuna_CH_hit_rate
+320. acuna_FC_hit_rate
+321. acuna_ST_hit_rate
+322. acuna_KC_hit_rate
+323. acuna_FS_hit_rate
+324. unknown_FF_usage
+325. unknown_SI_usage
+326. unknown_SL_usage
+327. unknown_CU_usage
+328. unknown_CH_usage
+329. unknown_FC_usage
+330. unknown_ST_usage
+331. unknown_KC_usage
+332. unknown_FS_usage
+333. unknown_zone_1_usage
+334. unknown_zone_2_usage
+335. unknown_zone_3_usage
+336. unknown_zone_4_usage
+337. unknown_zone_5_usage
+338. unknown_zone_6_usage
+339. unknown_zone_7_usage
+340. unknown_zone_8_usage
+341. unknown_zone_9_usage
+342. unknown_zone_10_usage
+343. unknown_zone_11_usage
+344. unknown_zone_12_usage
+345. unknown_zone_13_usage
+346. unknown_zone_14_usage
+347. unknown_count_0_0_avg_velocity
+348. unknown_count_0_1_avg_velocity
+349. unknown_count_0_2_avg_velocity
+350. unknown_count_1_0_avg_velocity
+351. unknown_count_1_1_avg_velocity
+352. unknown_count_1_2_avg_velocity
+353. unknown_count_2_0_avg_velocity
+354. unknown_count_2_1_avg_velocity
+355. unknown_count_2_2_avg_velocity
+356. unknown_count_3_0_avg_velocity
+357. unknown_count_3_1_avg_velocity
+358. unknown_count_3_2_avg_velocity
+359. unknown_avg_velocity
+360. unknown_avg_movement
+
+Features by category:
+
+Basic Statcast (69 features):
+  - acuna_zone_10_swing_rate
+  - acuna_zone_11_swing_rate
+  - acuna_zone_12_swing_rate
+  - acuna_zone_13_swing_rate
+  - acuna_zone_14_swing_rate
+  - acuna_zone_1_swing_rate
+  - acuna_zone_2_swing_rate
+  - acuna_zone_3_swing_rate
+  - acuna_zone_4_swing_rate
+  - acuna_zone_5_swing_rate
+  - acuna_zone_6_swing_rate
+  - acuna_zone_7_swing_rate
+  - acuna_zone_8_swing_rate
+  - acuna_zone_9_swing_rate
+  - acuna_zone_corner_hit_rate
+  - acuna_zone_corner_swing_rate
+  - acuna_zone_heart_hit_rate
+  - acuna_zone_heart_swing_rate
+  - acuna_zone_shadow_hit_rate
+  - acuna_zone_shadow_swing_rate
+  - closest_zone_edge
+  - count_x_zone
+  - early_count_zone_penalty
+  - edge_zone_decision
+  - far_from_zone
+  - far_from_zone_x_ahead
+  - in_strike_zone
+  - in_zone_two_strikes
+  - in_zone_x_two_strikes
+  - out_zone_ahead
+  - pitch_type
+  - pitch_type_change
+  - pitch_type_field_out_rate
+  - pitch_type_hit_rate
+  - pitch_type_whiff_rate
+  - pitch_type_x_location
+  - plate_x
+  - plate_x_norm
+  - plate_x_norm_x_movement
+  - plate_z
+  - plate_z_norm
+  - plate_z_norm_x_movement
+  - release_speed
+  - unknown_zone_10_usage
+  - unknown_zone_11_usage
+  - unknown_zone_12_usage
+  - unknown_zone_13_usage
+  - unknown_zone_14_usage
+  - unknown_zone_1_usage
+  - unknown_zone_2_usage
+  - unknown_zone_3_usage
+  - unknown_zone_4_usage
+  - unknown_zone_5_usage
+  - unknown_zone_6_usage
+  - unknown_zone_7_usage
+  - unknown_zone_8_usage
+  - unknown_zone_9_usage
+  - zone
+  - zone_bottom_distance
+  - zone_center_distance
+  - zone_corner
+  - zone_distance
+  - zone_distance_x_count_pressure
+  - zone_edge_distance
+  - zone_heart
+  - zone_quadrant
+  - zone_quadrant_encoded
+  - zone_shadow
+  - zone_top_distance
+
+Pitch Movement (33 features):
+  - api_break_x_batter_in
+  - api_break_z_with_gravity
+  - arm_side_break
+  - breaking_ball_high
+  - breaking_ball_low
+  - breaking_ball_velocity
+  - early_count_breaking_penalty
+  - expected_movement
+  - high_horizontal_movement
+  - high_movement
+  - high_movement_fastball
+  - high_spin
+  - high_vertical_movement
+  - horizontal_movement
+  - is_breaking_ball
+  - low_movement
+  - low_movement_breaking
+  - low_spin
+  - movement_deception
+  - movement_diff_from_avg
+  - movement_direction
+  - movement_magnitude
+  - movement_per_mph
+  - movement_ratio
+  - movement_x_count_pressure
+  - release_spin_rate
+  - spin_axis_rad
+  - spin_efficiency
+  - spin_movement_correlation
+  - unexpected_movement
+  - unknown_avg_movement
+  - velocity_movement_ratio
+  - vertical_movement
+
+Count-based (178 features):
+  - acuna_advantage_count_0_0_swing_rate
+  - acuna_advantage_count_0_1_swing_rate
+  - acuna_advantage_count_0_2_swing_rate
+  - acuna_advantage_count_1_0_swing_rate
+  - acuna_advantage_count_1_1_swing_rate
+  - acuna_advantage_count_1_2_swing_rate
+  - acuna_advantage_count_2_0_swing_rate
+  - acuna_advantage_count_2_1_swing_rate
+  - acuna_advantage_count_2_2_swing_rate
+  - acuna_advantage_count_3_0_swing_rate
+  - acuna_advantage_count_3_1_swing_rate
+  - acuna_advantage_count_3_2_swing_rate
+  - acuna_count_0_0_CH_swing_rate
+  - acuna_count_0_0_CU_swing_rate
+  - acuna_count_0_0_FC_swing_rate
+  - acuna_count_0_0_FF_swing_rate
+  - acuna_count_0_0_FS_swing_rate
+  - acuna_count_0_0_KC_swing_rate
+  - acuna_count_0_0_SI_swing_rate
+  - acuna_count_0_0_SL_swing_rate
+  - acuna_count_0_0_ST_swing_rate
+  - acuna_count_0_0_swing_rate
+  - acuna_count_0_1_CH_swing_rate
+  - acuna_count_0_1_CU_swing_rate
+  - acuna_count_0_1_FC_swing_rate
+  - acuna_count_0_1_FF_swing_rate
+  - acuna_count_0_1_FS_swing_rate
+  - acuna_count_0_1_KC_swing_rate
+  - acuna_count_0_1_SI_swing_rate
+  - acuna_count_0_1_SL_swing_rate
+  - acuna_count_0_1_ST_swing_rate
+  - acuna_count_0_1_swing_rate
+  - acuna_count_0_2_CH_swing_rate
+  - acuna_count_0_2_CU_swing_rate
+  - acuna_count_0_2_FC_swing_rate
+  - acuna_count_0_2_FF_swing_rate
+  - acuna_count_0_2_FS_swing_rate
+  - acuna_count_0_2_KC_swing_rate
+  - acuna_count_0_2_SI_swing_rate
+  - acuna_count_0_2_SL_swing_rate
+  - acuna_count_0_2_ST_swing_rate
+  - acuna_count_0_2_swing_rate
+  - acuna_count_1_0_CH_swing_rate
+  - acuna_count_1_0_CU_swing_rate
+  - acuna_count_1_0_FC_swing_rate
+  - acuna_count_1_0_FF_swing_rate
+  - acuna_count_1_0_FS_swing_rate
+  - acuna_count_1_0_KC_swing_rate
+  - acuna_count_1_0_SI_swing_rate
+  - acuna_count_1_0_SL_swing_rate
+  - acuna_count_1_0_ST_swing_rate
+  - acuna_count_1_0_swing_rate
+  - acuna_count_1_1_CH_swing_rate
+  - acuna_count_1_1_CU_swing_rate
+  - acuna_count_1_1_FC_swing_rate
+  - acuna_count_1_1_FF_swing_rate
+  - acuna_count_1_1_FS_swing_rate
+  - acuna_count_1_1_KC_swing_rate
+  - acuna_count_1_1_SI_swing_rate
+  - acuna_count_1_1_SL_swing_rate
+  - acuna_count_1_1_ST_swing_rate
+  - acuna_count_1_1_swing_rate
+  - acuna_count_1_2_CH_swing_rate
+  - acuna_count_1_2_CU_swing_rate
+  - acuna_count_1_2_FC_swing_rate
+  - acuna_count_1_2_FF_swing_rate
+  - acuna_count_1_2_FS_swing_rate
+  - acuna_count_1_2_KC_swing_rate
+  - acuna_count_1_2_SI_swing_rate
+  - acuna_count_1_2_SL_swing_rate
+  - acuna_count_1_2_ST_swing_rate
+  - acuna_count_1_2_swing_rate
+  - acuna_count_2_0_CH_swing_rate
+  - acuna_count_2_0_CU_swing_rate
+  - acuna_count_2_0_FC_swing_rate
+  - acuna_count_2_0_FF_swing_rate
+  - acuna_count_2_0_FS_swing_rate
+  - acuna_count_2_0_KC_swing_rate
+  - acuna_count_2_0_SI_swing_rate
+  - acuna_count_2_0_SL_swing_rate
+  - acuna_count_2_0_ST_swing_rate
+  - acuna_count_2_0_swing_rate
+  - acuna_count_2_1_CH_swing_rate
+  - acuna_count_2_1_CU_swing_rate
+  - acuna_count_2_1_FC_swing_rate
+  - acuna_count_2_1_FF_swing_rate
+  - acuna_count_2_1_FS_swing_rate
+  - acuna_count_2_1_KC_swing_rate
+  - acuna_count_2_1_SI_swing_rate
+  - acuna_count_2_1_SL_swing_rate
+  - acuna_count_2_1_ST_swing_rate
+  - acuna_count_2_1_swing_rate
+  - acuna_count_2_2_CH_swing_rate
+  - acuna_count_2_2_CU_swing_rate
+  - acuna_count_2_2_FC_swing_rate
+  - acuna_count_2_2_FF_swing_rate
+  - acuna_count_2_2_FS_swing_rate
+  - acuna_count_2_2_KC_swing_rate
+  - acuna_count_2_2_SI_swing_rate
+  - acuna_count_2_2_SL_swing_rate
+  - acuna_count_2_2_ST_swing_rate
+  - acuna_count_2_2_swing_rate
+  - acuna_count_3_0_CH_swing_rate
+  - acuna_count_3_0_CU_swing_rate
+  - acuna_count_3_0_FC_swing_rate
+  - acuna_count_3_0_FF_swing_rate
+  - acuna_count_3_0_FS_swing_rate
+  - acuna_count_3_0_KC_swing_rate
+  - acuna_count_3_0_SI_swing_rate
+  - acuna_count_3_0_SL_swing_rate
+  - acuna_count_3_0_ST_swing_rate
+  - acuna_count_3_0_swing_rate
+  - acuna_count_3_1_CH_swing_rate
+  - acuna_count_3_1_CU_swing_rate
+  - acuna_count_3_1_FC_swing_rate
+  - acuna_count_3_1_FF_swing_rate
+  - acuna_count_3_1_FS_swing_rate
+  - acuna_count_3_1_KC_swing_rate
+  - acuna_count_3_1_SI_swing_rate
+  - acuna_count_3_1_SL_swing_rate
+  - acuna_count_3_1_ST_swing_rate
+  - acuna_count_3_1_swing_rate
+  - acuna_count_3_2_CH_swing_rate
+  - acuna_count_3_2_CU_swing_rate
+  - acuna_count_3_2_FC_swing_rate
+  - acuna_count_3_2_FF_swing_rate
+  - acuna_count_3_2_FS_swing_rate
+  - acuna_count_3_2_KC_swing_rate
+  - acuna_count_3_2_SI_swing_rate
+  - acuna_count_3_2_SL_swing_rate
+  - acuna_count_3_2_ST_swing_rate
+  - acuna_count_3_2_swing_rate
+  - acuna_two_strikes_swing_rate
+  - ahead_in_count
+  - balls
+  - balls_in_play
+  - behind_in_count
+  - count_advantage
+  - count_advantage_encoded
+  - count_field_out_rate
+  - count_hit_rate
+  - count_pressure
+  - count_ratio
+  - count_swing_rate_adjustment
+  - count_total
+  - count_whiff_rate
+  - early_count
+  - early_count_high_vel_penalty
+  - early_count_location_penalty
+  - early_count_low_vel_penalty
+  - early_count_offspeed_penalty
+  - early_count_outside_penalty
+  - early_count_penalty
+  - early_count_swing
+  - full_count
+  - full_count_pressure
+  - hitters_count
+  - late_count
+  - late_count_take
+  - middle_count
+  - neutral_count
+  - pitchers_count
+  - pressure_count
+  - strikes
+  - three_balls
+  - two_strikes
+  - unknown_count_0_0_avg_velocity
+  - unknown_count_0_1_avg_velocity
+  - unknown_count_0_2_avg_velocity
+  - unknown_count_1_0_avg_velocity
+  - unknown_count_1_1_avg_velocity
+  - unknown_count_1_2_avg_velocity
+  - unknown_count_2_0_avg_velocity
+  - unknown_count_2_1_avg_velocity
+  - unknown_count_2_2_avg_velocity
+  - unknown_count_3_0_avg_velocity
+  - unknown_count_3_1_avg_velocity
+  - unknown_count_3_2_avg_velocity
+
+Zone/Location (5 features):
+  - extreme_location
+  - location_extreme
+  - location_quadrant
+  - location_quadrant_encoded
+  - velocity_x_location
+
+Hitter Averages (23 features):
+  - acuna_CH_hit_rate
+  - acuna_CH_swing_rate
+  - acuna_CU_hit_rate
+  - acuna_CU_swing_rate
+  - acuna_FC_hit_rate
+  - acuna_FC_swing_rate
+  - acuna_FF_hit_rate
+  - acuna_FF_swing_rate
+  - acuna_FS_hit_rate
+  - acuna_FS_swing_rate
+  - acuna_KC_hit_rate
+  - acuna_KC_swing_rate
+  - acuna_SI_hit_rate
+  - acuna_SI_swing_rate
+  - acuna_SL_hit_rate
+  - acuna_SL_swing_rate
+  - acuna_ST_hit_rate
+  - acuna_ST_swing_rate
+  - acuna_ahead_swing_rate
+  - acuna_behind_swing_rate
+  - acuna_high_velocity_swing_rate
+  - acuna_low_velocity_swing_rate
+  - acuna_overall_swing_rate
+
+Advanced Features (52 features):
+  - ahead_by_two
+  - batting_average_bip
+  - behind_by_two
+  - can_take
+  - close_game
+  - close_score
+  - corner_pitch
+  - fastball_high
+  - field_out_rate_bip
+  - first_pitch
+  - heart_pitch
+  - high_leverage
+  - high_pitch
+  - high_velocity
+  - inning_late
+  - inside_pitch
+  - is_fastball
+  - is_offspeed
+  - last_pitch
+  - late_inning
+  - low_pitch
+  - low_velocity
+  - must_swing
+  - offspeed_low
+  - offspeed_middle
+  - opportunity_take
+  - outside_pitch
+  - pitch_in_at_bat
+  - pressure_situation
+  - pressure_swing
+  - shadow_pitch
+  - sz_bot
+  - sz_top
+  - total_swings
+  - total_whiffs
+  - unknown_CH_usage
+  - unknown_CU_usage
+  - unknown_FC_usage
+  - unknown_FF_usage
+  - unknown_FS_usage
+  - unknown_KC_usage
+  - unknown_SI_usage
+  - unknown_SL_usage
+  - unknown_ST_usage
+  - unknown_avg_velocity
+  - velocity_bin
+  - velocity_consistency
+  - velocity_diff_from_avg
+  - velocity_drop
+  - velocity_std
+  - velocity_surprise
+  - whiff_rate

@@ -2,6 +2,8 @@ import pandas as pd
 import numpy as np
 import pickle
 from collections import Counter
+from collections import defaultdict
+import math
 
 # Import the same functions from training script
 from train_sequential_models import prepare_features, calculate_zone
@@ -131,22 +133,59 @@ swing_prob_scores = swing_probs[:, 1]  # Probability of swing
 
 # Get calibrated probabilities and apply count-specific thresholds
 swing_preds = []
+thresholds = []
 for i, (prob, row) in enumerate(zip(swing_prob_scores, holdout_df.iterrows())):
     balls = row[1].get('balls', 0)
     strikes = row[1].get('strikes', 0)
     
     # Determine count situation and threshold
-    if balls <= 1 and strikes <= 1:
-        threshold = 0.95 # Very high threshold for early counts (≤1 ball, ≤1 strike)
+    # if balls <= 1 and strikes <= 1:
+    #     threshold = 0.95 # Very high threshold for early counts (≤1 ball, ≤1 strike)
+    # elif strikes == 2 and balls < 3:
+    #     threshold = 0.65
+    # elif balls == 3 and strikes == 0:
+    #     threshold == 0.95
+    # elif balls == 2 or balls == 1 and strikes == 0:
+    #     threshold = 0.70
+    # elif balls == 3 and strikes == 2: 
+    #     threshold = 0.60
+    # elif balls == 3 and strikes == 1:
+    #     threshold = 0.85
+    # elif balls == 1 and strikes == 1:
+    #     threshold = 0.85 # High threshold for middle counts (1-1)
+    # else:
+    #     threshold = 0.9 # Default threshold for other situations
+    if balls == 0 and strikes == 0:
+        threshold = 0.95
+    elif balls == 0 and strikes == 1:
+        threshold = 0.90
+    elif balls == 0 and strikes == 2:
+        threshold = 0.50
+    elif balls == 1 and strikes == 0:
+        threshold = 0.95
     elif balls == 1 and strikes == 1:
-        threshold = 0.85 # High threshold for middle counts (1-1)
-    elif strikes >= 2 or balls >= 3:
-        threshold = 0.75 # Lower threshold for pressure situations (≥2 strikes or ≥3 balls)
+        threshold = 0.95
+    elif balls == 1 and strikes == 2:
+        threshold = 0.55
+    elif balls == 2 and strikes == 0:
+        threshold = 0.95
+    elif balls == 2 and strikes == 1:
+        threshold = 0.90
+    elif balls == 2 and strikes == 2:
+        threshold = 0.75
+    elif balls == 3 and strikes == 0:
+        threshold = 0.95
+    elif balls == 3 and strikes == 1:
+        threshold = 0.50
+    elif balls == 3 and strikes == 2:
+        threshold = 0.50
     else:
-        threshold = 0.9 # Default threshold for other situations
+        threshold = 0.9  # Fallback default
+
     
     # Make prediction with count-specific threshold
     swing_preds.append(1 if prob >= threshold else 0)
+    thresholds.append(threshold)
 
 swing_preds = np.array(swing_preds)
 
@@ -393,3 +432,262 @@ if fp_indices:
 
 else:
     print("No false positives found to analyze!") 
+
+# After making predictions for each pitch, output detailed analysis
+# print("pitch_idx,confidence,threshold,prediction,actual")
+# for idx, (proba, threshold, pred, actual) in enumerate(zip(swing_prob_scores, thresholds, swing_preds, true_swings)):
+#     pred_label = 'SWING' if pred == 1 else 'NO SWING'
+#     actual_label = 'SWING' if actual == 1 else 'NO SWING'
+#     print(f"{idx},{proba:.4f},{threshold:.3f},{pred_label},{actual_label}") 
+
+# NEW: OUTPUT ALL FEATURE IMPORTANCES TO CSV
+print("\n" + "=" * 60)
+print("FEATURE IMPORTANCE ANALYSIS")
+print("=" * 60)
+
+# Get feature importances from the trained model
+# We need to get the feature importances from the ensemble model
+# Since we're using a calibrated model, we need to access the base estimator
+
+# Try to get feature importances from the calibrated model
+if hasattr(swing_calibrated_model, 'base_estimator'):
+    base_model = swing_calibrated_model.base_estimator
+    if hasattr(base_model, 'estimators_'):
+        # Ensemble model - get importances from the first XGBoost model
+        xgb_model = base_model.estimators_[0]
+        if hasattr(xgb_model, 'feature_importances_'):
+            feature_importances = xgb_model.feature_importances_
+            print("✓ Got feature importances from ensemble XGBoost model")
+        else:
+            print("✗ XGBoost model doesn't have feature importances")
+            feature_importances = None
+    elif hasattr(base_model, 'feature_importances_'):
+        # Single XGBoost model
+        feature_importances = base_model.feature_importances_
+        print("✓ Got feature importances from single XGBoost model")
+    else:
+        print("✗ Base model doesn't have feature importances")
+        feature_importances = None
+else:
+    print("✗ Calibrated model doesn't have base_estimator")
+    feature_importances = None
+
+if feature_importances is not None:
+    # Get feature names from the preprocessor
+    feature_names = swing_preprocessor.get_feature_names_out()
+    
+    # Create DataFrame with feature names and importances
+    feature_importance_df = pd.DataFrame({
+        'feature_name': feature_names,
+        'importance': feature_importances
+    })
+    
+    # Sort by importance (descending)
+    feature_importance_df = feature_importance_df.sort_values('importance', ascending=False)
+    
+    # Add additional columns for analysis
+    feature_importance_df['importance_rank'] = range(1, len(feature_importance_df) + 1)
+    feature_importance_df['importance_percentile'] = feature_importance_df['importance'].rank(pct=True) * 100
+    feature_importance_df['importance_category'] = pd.cut(
+        feature_importance_df['importance'], 
+        bins=[0, 0.001, 0.01, 0.1, 1.0], 
+        labels=['Very Low (0-0.001)', 'Low (0.001-0.01)', 'Medium (0.01-0.1)', 'High (0.1-1.0)']
+    )
+    
+    # Add feature type classification
+    def classify_feature_type(feature_name):
+        feature_name_lower = feature_name.lower()
+        if 'acuna_' in feature_name_lower:
+            return 'Hitter_Specific'
+        elif 'zone' in feature_name_lower or 'plate_' in feature_name_lower:
+            return 'Location'
+        elif 'count' in feature_name_lower or 'ball' in feature_name_lower or 'strike' in feature_name_lower:
+            return 'Count'
+        elif 'pitch_type' in feature_name_lower or 'fastball' in feature_name_lower or 'breaking' in feature_name_lower:
+            return 'Pitch_Type'
+        elif 'movement' in feature_name_lower or 'break' in feature_name_lower:
+            return 'Movement'
+        elif 'velocity' in feature_name_lower or 'speed' in feature_name_lower:
+            return 'Velocity'
+        elif 'contact' in feature_name_lower or 'hit' in feature_name_lower:
+            return 'Contact'
+        elif 'babip' in feature_name_lower or 'whiff' in feature_name_lower:
+            return 'Outcome'
+        else:
+            return 'Other'
+    
+    feature_importance_df['feature_type'] = feature_importance_df['feature_name'].apply(classify_feature_type)
+    
+    # Save to CSV
+    csv_filename = "swing_classifier_feature_importances.csv"
+    feature_importance_df.to_csv(csv_filename, index=False)
+    
+    print(f"✓ Feature importances saved to '{csv_filename}'")
+    print(f"Total features analyzed: {len(feature_importance_df)}")
+    
+    # Print summary statistics
+    print(f"\nFeature Importance Summary:")
+    print(f"  Mean importance: {feature_importance_df['importance'].mean():.6f}")
+    print(f"  Median importance: {feature_importance_df['importance'].median():.6f}")
+    print(f"  Max importance: {feature_importance_df['importance'].max():.6f}")
+    print(f"  Min importance: {feature_importance_df['importance'].min():.6f}")
+    
+    # Print feature type breakdown
+    print(f"\nFeature Type Breakdown:")
+    type_counts = feature_importance_df['feature_type'].value_counts()
+    for feature_type, count in type_counts.items():
+        avg_importance = feature_importance_df[feature_importance_df['feature_type'] == feature_type]['importance'].mean()
+        print(f"  {feature_type}: {count} features, avg importance: {avg_importance:.6f}")
+    
+    # Print importance category breakdown
+    print(f"\nImportance Category Breakdown:")
+    category_counts = feature_importance_df['importance_category'].value_counts()
+    for category, count in category_counts.items():
+        print(f"  {category}: {count} features")
+    
+    # Print top 20 features
+    print(f"\nTop 20 Most Important Features:")
+    for idx, row in feature_importance_df.head(20).iterrows():
+        print(f"  {row['importance_rank']:2d}. {row['feature_name']:<40} {row['importance']:.6f} ({row['feature_type']})")
+    
+    # Print features with zero importance
+    zero_importance_features = feature_importance_df[feature_importance_df['importance'] == 0]
+    print(f"\nFeatures with Zero Importance ({len(zero_importance_features)} features):")
+    for idx, row in zero_importance_features.iterrows():
+        print(f"  {row['feature_name']} ({row['feature_type']})")
+    
+    # Print features with very low importance (< 0.001)
+    very_low_features = feature_importance_df[feature_importance_df['importance'] < 0.001]
+    print(f"\nFeatures with Very Low Importance (< 0.001) ({len(very_low_features)} features):")
+    for idx, row in very_low_features.head(10).iterrows():  # Show first 10
+        print(f"  {row['feature_name']} ({row['feature_type']}): {row['importance']:.6f}")
+    if len(very_low_features) > 10:
+        print(f"  ... and {len(very_low_features) - 10} more features")
+    
+    # Feature type analysis
+    print(f"\nFeature Type Importance Analysis:")
+    for feature_type in feature_importance_df['feature_type'].unique():
+        type_features = feature_importance_df[feature_importance_df['feature_type'] == feature_type]
+        avg_importance = type_features['importance'].mean()
+        max_importance = type_features['importance'].max()
+        zero_count = (type_features['importance'] == 0).sum()
+        print(f"  {feature_type}:")
+        print(f"    Count: {len(type_features)}")
+        print(f"    Avg importance: {avg_importance:.6f}")
+        print(f"    Max importance: {max_importance:.6f}")
+        print(f"    Zero importance features: {zero_count}")
+    
+else:
+    print("✗ Could not extract feature importances from the model")
+    print("This might be because the model is an ensemble or calibrated model")
+    print("You may need to access feature importances differently")
+ 
+# --- Misclassification analysis by count ---
+misclass_by_count = defaultdict(list)
+for idx, (pred, actual, proba) in enumerate(zip(swing_preds, true_swings, swing_prob_scores)):
+    if pred != actual:
+        balls = holdout_df.iloc[idx]['balls']
+        strikes = holdout_df.iloc[idx]['strikes']
+        misclass_by_count[(balls, strikes)].append(proba)
+
+print("\nMisclassifications by Count (Balls-Strikes):")
+print(f"{'Balls-Strikes':<12} {'# Miss':<8} {'Avg Conf':<10}")
+print("-" * 32)
+for (balls, strikes), probs in sorted(misclass_by_count.items()):
+    if math.isnan(balls) or math.isnan(strikes):
+        print(f"Skipping count with NaN: balls={balls}, strikes={strikes}")
+        continue
+    avg_conf = sum(probs) / len(probs) if probs else 0
+    print(f"{int(balls)}-{int(strikes):<9} {len(probs):<8} {avg_conf:.3f}") 
+ 
+# --- Deeper dive into 0-0 count misclassifications ---
+zero_zero_indices = [idx for idx, (pred, actual) in enumerate(zip(swing_preds, true_swings))
+                    if pred != actual and holdout_df.iloc[idx]['balls'] == 0 and holdout_df.iloc[idx]['strikes'] == 0]
+
+swing_to_noswing = 0
+noswing_to_swing = 0
+examples = []
+for idx in zero_zero_indices:
+    pred = swing_preds[idx]
+    actual = true_swings[idx]
+    proba = swing_prob_scores[idx]
+    pitch_type = holdout_df.iloc[idx]['pitch_type'] if 'pitch_type' in holdout_df.columns else 'NA'
+    if actual == 1 and pred == 0:
+        swing_to_noswing += 1
+        examples.append((idx, 'SWING', 'NO SWING', proba, pitch_type))
+    elif actual == 0 and pred == 1:
+        noswing_to_swing += 1
+        examples.append((idx, 'NO SWING', 'SWING', proba, pitch_type))
+
+print("\nDetailed 0-0 Count Misclassification Breakdown:")
+print(f"  Actual SWING, Predicted NO SWING: {swing_to_noswing}")
+print(f"  Actual NO SWING, Predicted SWING: {noswing_to_swing}")
+
+print("\nSample of 0-0 misclassifications (idx, actual, predicted, confidence, pitch_type):")
+for ex in examples[:10]:
+    print(f"  {ex[0]}, {ex[1]}, {ex[2]}, {ex[3]:.3f}, {ex[4]}") 
+ 
+# --- Per-count threshold grid search (coordinate descent) ---
+import numpy as np
+from sklearn.metrics import balanced_accuracy_score
+
+# Define count buckets
+count_buckets = ["0-0", "0-1", "0-2", "1-0", "1-1", "1-2", "2-0", "2-1", "2-2", "3-0", "3-1", "3-2"]
+threshold_range = np.arange(0.5, 0.96, 0.05)
+
+# Map each pitch to its count bucket
+pitch_counts = []
+valid_indices = []
+for i, row in holdout_df.iterrows():
+    balls = row['balls']
+    strikes = row['strikes']
+    if pd.isna(balls) or pd.isna(strikes):
+        continue
+    pitch_counts.append(f"{int(balls)}-{int(strikes)}")
+    valid_indices.append(i)
+
+# Only keep pitches in our buckets
+# valid_indices = [i for i, c in enumerate(pitch_counts) if c in count_buckets] # This line is no longer needed
+filtered_probs = []
+filtered_true = []
+filtered_counts = []
+for idx, i in enumerate(valid_indices):
+    label = true_swings[i]
+    if pd.isna(label):
+        continue
+    filtered_probs.append(swing_prob_scores[i])
+    filtered_true.append(label)
+    filtered_counts.append(pitch_counts[idx])
+
+# Initialize thresholds
+best_thresholds = {c: 0.9 for c in count_buckets}
+
+# Coordinate descent grid search
+for it in range(2):  # 2 passes is usually enough
+    for bucket in count_buckets:
+        best_acc = 0
+        best_thr = best_thresholds[bucket]
+        for thr in threshold_range:
+            preds = []
+            for prob, count in zip(filtered_probs, filtered_counts):
+                use_thr = best_thresholds[count] if count != bucket else thr
+                preds.append(1 if prob >= use_thr else 0)
+            acc = balanced_accuracy_score(filtered_true, preds)
+            if acc > best_acc:
+                best_acc = acc
+                best_thr = thr
+        best_thresholds[bucket] = best_thr
+
+# Final evaluation with best thresholds
+final_preds = [1 if prob >= best_thresholds[count] else 0 for prob, count in zip(filtered_probs, filtered_counts)]
+final_acc = balanced_accuracy_score(filtered_true, final_preds)
+
+print("\nBest per-count thresholds (coordinate grid search):")
+for c in count_buckets:
+    print(f"  {c}: {best_thresholds[c]:.2f}")
+print(f"Balanced accuracy with optimized thresholds: {final_acc:.3f}") 
+ 
+ 
+ 
+ 
+ 

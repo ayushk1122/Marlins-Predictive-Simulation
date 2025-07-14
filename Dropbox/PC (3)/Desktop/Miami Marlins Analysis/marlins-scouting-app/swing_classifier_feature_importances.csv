@@ -1,0 +1,247 @@
+feature_name,importance,importance_rank,importance_percentile,importance_category,feature_type
+num__opportunity_take,0.30511144,1,100.0,High (0.1-1.0),Other
+num__out_zone_ahead,0.13314989,2,99.59349593495935,High (0.1-1.0),Location
+num__can_take,0.052888263,3,99.1869918699187,Medium (0.01-0.1),Other
+num__pressure_count,0.050455425,4,98.78048780487805,Medium (0.01-0.1),Count
+num__pressure_situation,0.0378064,5,98.3739837398374,Medium (0.01-0.1),Other
+num__strikes,0.029498504,6,97.96747967479675,Medium (0.01-0.1),Count
+num__offspeed_low,0.01786461,7,97.5609756097561,Medium (0.01-0.1),Velocity
+num__early_count,0.016662192,8,97.15447154471545,Medium (0.01-0.1),Count
+num__location_quadrant_encoded,0.014973062,9,96.7479674796748,Medium (0.01-0.1),Other
+num__two_strikes,0.014257465,10,96.34146341463415,Medium (0.01-0.1),Count
+num__early_count_location_penalty,0.011639091,11,95.9349593495935,Medium (0.01-0.1),Count
+num__plate_x,0.010500973,12,95.52845528455285,Medium (0.01-0.1),Location
+num__zone_distance,0.009849329,13,95.1219512195122,Low (0.001-0.01),Location
+num__plate_z,0.009577698,14,94.71544715447155,Low (0.001-0.01),Location
+cat__home_team_MIA,0.009241385,15,94.3089430894309,Low (0.001-0.01),Other
+num__zone_distance_x_count_pressure,0.0088364445,16,93.90243902439023,Low (0.001-0.01),Location
+num__shadow_pitch,0.008694929,17,93.4959349593496,Low (0.001-0.01),Other
+num__location_extreme,0.007982566,18,93.08943089430895,Low (0.001-0.01),Other
+cat__home_team_WSH,0.007299844,19,92.6829268292683,Low (0.001-0.01),Other
+num__sz_top,0.007125672,20,92.27642276422763,Low (0.001-0.01),Other
+num__sz_bot,0.0066185463,21,91.869918699187,Low (0.001-0.01),Other
+num__low_movement_breaking,0.006419214,22,91.46341463414635,Low (0.001-0.01),Pitch_Type
+num__zone_center_distance,0.006030042,23,91.05691056910568,Low (0.001-0.01),Location
+num__total_whiffs,0.0060000247,24,90.65040650406505,Low (0.001-0.01),Outcome
+num__zone_corner,0.0057481965,25,90.2439024390244,Low (0.001-0.01),Location
+num__movement_magnitude,0.0057471045,26,89.83739837398373,Low (0.001-0.01),Movement
+num__plate_z_norm_x_movement,0.005740181,27,89.43089430894308,Low (0.001-0.01),Location
+num__velocity_x_location,0.0051799775,28,89.02439024390245,Low (0.001-0.01),Velocity
+num__plate_x_norm_x_movement,0.0049849083,29,88.6178861788618,Low (0.001-0.01),Location
+num__total_swings,0.004894586,30,88.21138211382113,Low (0.001-0.01),Other
+num__zone_bottom_distance,0.004867672,31,87.8048780487805,Low (0.001-0.01),Location
+num__count_total,0.0048175342,32,87.39837398373984,Low (0.001-0.01),Count
+num__arm_angle,0.004689257,33,86.99186991869918,Low (0.001-0.01),Other
+cat__zone_quadrant_up_in,0.004663261,34,86.58536585365853,Low (0.001-0.01),Location
+num__pfx_x,0.0043978966,35,86.1788617886179,Low (0.001-0.01),Other
+num__movement_x_count_pressure,0.0043825484,36,85.77235772357723,Low (0.001-0.01),Count
+num__api_break_x_batter_in,0.0042272033,37,85.36585365853658,Low (0.001-0.01),Movement
+cat__zone_quadrant_down_out,0.004159128,38,84.95934959349594,Low (0.001-0.01),Location
+num__balls_in_play,0.004143201,39,84.5528455284553,Low (0.001-0.01),Count
+num__is_breaking_ball,0.004039929,40,84.14634146341463,Low (0.001-0.01),Count
+num__release_speed,0.0040300614,41,83.73983739837398,Low (0.001-0.01),Velocity
+num__count_x_zone,0.003977561,42,83.33333333333334,Low (0.001-0.01),Location
+num__balls,0.0039768727,43,82.92682926829268,Low (0.001-0.01),Count
+num__outside_pitch,0.003904259,44,82.52032520325203,Low (0.001-0.01),Other
+num__closest_zone_edge,0.0039042342,45,82.11382113821138,Low (0.001-0.01),Location
+num__whiff_rate,0.0036745525,46,81.70731707317073,Low (0.001-0.01),Outcome
+num__pfx_z,0.0036181153,47,81.30081300813008,Low (0.001-0.01),Other
+cat__if_fielding_alignment_Standard,0.0034967824,48,80.89430894308943,Low (0.001-0.01),Other
+num__zone_edge_distance,0.0033802458,49,80.48780487804879,Low (0.001-0.01),Location
+num__breaking_ball_velocity,0.0033554882,50,80.08130081300813,Low (0.001-0.01),Count
+num__vy0,0.0032872723,51,79.67479674796748,Low (0.001-0.01),Other
+num__velocity_movement_ratio,0.0032615757,52,79.26829268292683,Low (0.001-0.01),Movement
+num__api_break_x_arm,0.00315681,53,78.86178861788618,Low (0.001-0.01),Movement
+num__extreme_location,0.003113245,54,78.45528455284553,Low (0.001-0.01),Other
+num__zone_quadrant_encoded,0.0030630785,55,78.04878048780488,Low (0.001-0.01),Location
+cat__if_fielding_alignment_Infield shift,0.0028233328,56,77.64227642276423,Low (0.001-0.01),Other
+num__effective_speed,0.002801807,57,77.23577235772358,Low (0.001-0.01),Velocity
+num__pitch_type_x_location,0.002795443,58,76.82926829268293,Low (0.001-0.01),Pitch_Type
+num__field_out_rate_bip,0.00277454,59,76.42276422764228,Low (0.001-0.01),Other
+num__release_pos_z,0.002746131,60,76.01626016260163,Low (0.001-0.01),Other
+num__batting_average_bip,0.0027376683,61,75.60975609756098,Low (0.001-0.01),Other
+cat__pitch_type_SI,0.0026769005,62,75.20325203252033,Low (0.001-0.01),Pitch_Type
+num__pitch_in_at_bat,0.0025435246,63,74.79674796747967,Low (0.001-0.01),Other
+num__api_break_z_with_gravity,0.002510116,64,74.39024390243902,Low (0.001-0.01),Movement
+cat__pitch_type_SL,0.002415147,65,73.98373983739837,Low (0.001-0.01),Pitch_Type
+num__vz0,0.0023948106,66,73.57723577235772,Low (0.001-0.01),Other
+num__spin_axis,0.0023935358,67,73.17073170731707,Low (0.001-0.01),Other
+num__vx0,0.0023554994,68,72.76422764227642,Low (0.001-0.01),Other
+num__release_pos_x,0.002292883,69,72.35772357723577,Low (0.001-0.01),Other
+num__release_spin_rate,0.00210039,70,71.95121951219512,Low (0.001-0.01),Other
+num__release_pos_y,0.0020924439,71,71.54471544715447,Low (0.001-0.01),Other
+num__release_extension,0.0020610064,72,71.13821138211382,Low (0.001-0.01),Other
+num__zone_top_distance,0.0020040746,73,70.73170731707317,Low (0.001-0.01),Location
+num__zone_shadow,0.0019277909,74,70.32520325203252,Low (0.001-0.01),Location
+cat__home_team_ATL,0.0018854387,75,69.91869918699187,Low (0.001-0.01),Other
+num__horizontal_movement,0.0018114999,76,69.51219512195121,Low (0.001-0.01),Movement
+num__movement_ratio,0.0018053317,77,69.10569105691057,Low (0.001-0.01),Movement
+num__full_count_pressure,0.0017770261,78,68.69918699186992,Low (0.001-0.01),Count
+num__fastball_zone_contact,0.001737447,79,68.29268292682927,Low (0.001-0.01),Location
+num__opportunity_zone_contact,0.0016067509,80,67.88617886178862,Low (0.001-0.01),Location
+num__age_pit,0.0015735466,81,67.47967479674797,Low (0.001-0.01),Other
+num__zone,0.0015655253,82,67.07317073170732,Low (0.001-0.01),Location
+cat__p_throws_R,0.0013974897,83,66.66666666666666,Low (0.001-0.01),Other
+num__late_count,0.00137651,84,66.26016260162602,Low (0.001-0.01),Count
+num__vertical_movement,0.0013648173,85,65.85365853658537,Low (0.001-0.01),Movement
+num__count_pressure,0.0013328241,86,65.4471544715447,Low (0.001-0.01),Count
+num__count_ratio,0.0013254386,87,65.04065040650406,Low (0.001-0.01),Count
+num__is_fastball,0.0013104045,88,64.63414634146342,Low (0.001-0.01),Count
+num__in_strike_zone,0.0012755595,89,64.22764227642277,Low (0.001-0.01),Location
+cat__p_throws_L,0.001269399,90,63.82113821138211,Low (0.001-0.01),Other
+num__behind_in_count,0.0012075106,91,63.41463414634146,Low (0.001-0.01),Count
+num__in_zone_two_strikes,0.001124229,92,63.00813008130082,Low (0.001-0.01),Location
+num__edge_zone_decision,0.0010891602,93,62.601626016260155,Low (0.001-0.01),Location
+num__in_zone_x_two_strikes,0.0010588354,94,62.19512195121951,Low (0.001-0.01),Location
+num__far_from_zone,0.00095943135,95,61.78861788617886,Very Low (0-0.001),Location
+num__behind_by_two,0.0009000333,96,61.382113821138205,Very Low (0-0.001),Other
+num__pressure_swing,0.0008365482,97,60.97560975609756,Very Low (0-0.001),Other
+cat__of_fielding_alignment_Standard,0.00081332086,98,60.56910569105691,Very Low (0-0.001),Other
+num__pitchers_count,0.00076800917,99,60.16260162601627,Very Low (0-0.001),Count
+cat__count_advantage_neutral,0.0006036403,100,59.756097560975604,Very Low (0-0.001),Count
+cat__pitch_type_FF,0.0005297268,101,59.34959349593496,Very Low (0-0.001),Pitch_Type
+num__far_from_zone_x_ahead,0.0004961245,102,58.94308943089431,Very Low (0-0.001),Location
+num__zone_overall_contact,0.0003856589,103,58.536585365853654,Very Low (0-0.001),Location
+cat__pitch_type_KN,0.0,104,29.268292682926827,,Pitch_Type
+num__acuna_zone_hit_rate,0.0,105,29.268292682926827,,Hitter_Specific
+cat__pitch_type_CU,0.0,106,29.268292682926827,,Pitch_Type
+cat__pitch_type_FS,0.0,107,29.268292682926827,,Pitch_Type
+cat__pitch_type_FC,0.0,108,29.268292682926827,,Pitch_Type
+cat__pitch_type_FA,0.0,109,29.268292682926827,,Pitch_Type
+cat__pitch_type_EP,0.0,110,29.268292682926827,,Pitch_Type
+cat__pitch_type_ST,0.0,111,29.268292682926827,,Pitch_Type
+cat__pitch_type_KC,0.0,112,29.268292682926827,,Pitch_Type
+cat__home_team_COL,0.0,113,29.268292682926827,,Other
+cat__pitch_type_CH,0.0,114,29.268292682926827,,Pitch_Type
+num__offspeed_zone_contact,0.0,115,29.268292682926827,,Location
+num__zone_heart_contact,0.0,116,29.268292682926827,,Location
+num__zone_corner_contact,0.0,117,29.268292682926827,,Location
+num__zone_shadow_contact,0.0,118,29.268292682926827,,Location
+num__outside_zone_contact,0.0,119,29.268292682926827,,Location
+cat__home_team_MIN,0.0,120,29.268292682926827,,Other
+num__breaking_zone_contact,0.0,121,29.268292682926827,,Location
+num__pressure_zone_contact,0.0,122,29.268292682926827,,Location
+cat__home_team_NYY,0.0,123,29.268292682926827,,Other
+cat__home_team_MIL,0.0,124,29.268292682926827,,Other
+num__two_strikes_zone_contact,0.0,125,29.268292682926827,,Location
+cat__home_team_NYM,0.0,126,29.268292682926827,,Other
+cat__count_advantage_hitter_ahead,0.0,127,29.268292682926827,,Count
+cat__location_quadrant_up_right,0.0,128,29.268292682926827,,Other
+cat__pitch_type_SV,0.0,129,29.268292682926827,,Pitch_Type
+cat__location_quadrant_up_left,0.0,130,29.268292682926827,,Other
+cat__location_quadrant_down_left,0.0,131,29.268292682926827,,Other
+cat__pitch_type_nan,0.0,132,29.268292682926827,,Pitch_Type
+cat__home_team_STL,0.0,133,29.268292682926827,,Other
+cat__home_team_CLE,0.0,134,29.268292682926827,,Other
+cat__home_team_DET,0.0,135,29.268292682926827,,Other
+cat__home_team_CIN,0.0,136,29.268292682926827,,Other
+cat__home_team_HOU,0.0,137,29.268292682926827,,Other
+cat__home_team_SD,0.0,138,29.268292682926827,,Other
+cat__home_team_CHC,0.0,139,29.268292682926827,,Other
+cat__home_team_BOS,0.0,140,29.268292682926827,,Other
+cat__home_team_SEA,0.0,141,29.268292682926827,,Other
+cat__home_team_BAL,0.0,142,29.268292682926827,,Other
+cat__home_team_SF,0.0,143,29.268292682926827,,Other
+cat__home_team_AZ,0.0,144,29.268292682926827,,Other
+cat__home_team_KC,0.0,145,29.268292682926827,,Other
+cat__stand_R,0.0,146,29.268292682926827,,Other
+cat__home_team_TB,0.0,147,29.268292682926827,,Other
+cat__home_team_OAK,0.0,148,29.268292682926827,,Other
+cat__home_team_TEX,0.0,149,29.268292682926827,,Other
+cat__home_team_TOR,0.0,150,29.268292682926827,,Other
+cat__of_fielding_alignment_nan,0.0,151,29.268292682926827,,Other
+cat__of_fielding_alignment_Strategic,0.0,152,29.268292682926827,,Other
+cat__zone_quadrant_down_in,0.0,153,29.268292682926827,,Location
+cat__home_team_PHI,0.0,154,29.268292682926827,,Other
+cat__if_fielding_alignment_nan,0.0,155,29.268292682926827,,Other
+cat__home_team_LAD,0.0,156,29.268292682926827,,Other
+cat__zone_quadrant_up_out,0.0,157,29.268292682926827,,Location
+cat__if_fielding_alignment_Strategic,0.0,158,29.268292682926827,,Other
+cat__home_team_PIT,0.0,159,29.268292682926827,,Other
+cat__location_quadrant_down_right,0.0,160,29.268292682926827,,Other
+cat__if_fielding_alignment_Infield shade,0.0,161,29.268292682926827,,Other
+num__acuna_outside_hit_rate,0.0,162,29.268292682926827,,Hitter_Specific
+num__early_count_zone_penalty,0.0,163,29.268292682926827,,Location
+num__acuna_zone_shadow_hit_rate,0.0,164,29.268292682926827,,Hitter_Specific
+num__close_game,0.0,165,29.268292682926827,,Other
+num__last_pitch,0.0,166,29.268292682926827,,Other
+num__velocity_diff_from_avg,0.0,167,29.268292682926827,,Velocity
+num__high_horizontal_movement,0.0,168,29.268292682926827,,Movement
+num__high_vertical_movement,0.0,169,29.268292682926827,,Movement
+num__zone_heart,0.0,170,29.268292682926827,,Location
+num__must_swing,0.0,171,29.268292682926827,,Other
+num__fastball_high,0.0,172,29.268292682926827,,Count
+num__breaking_ball_low,0.0,173,29.268292682926827,,Count
+num__offspeed_middle,0.0,174,29.268292682926827,,Velocity
+num__pitch_type_change,0.0,175,29.268292682926827,,Pitch_Type
+num__high_leverage,0.0,176,29.268292682926827,,Other
+num__ahead_by_two,0.0,177,29.268292682926827,,Other
+num__velocity_surprise,0.0,178,29.268292682926827,,Velocity
+num__velocity_consistency,0.0,179,29.268292682926827,,Velocity
+num__high_movement_fastball,0.0,180,29.268292682926827,,Count
+num__unexpected_movement,0.0,181,29.268292682926827,,Movement
+num__corner_pitch,0.0,182,29.268292682926827,,Other
+num__first_pitch,0.0,183,29.268292682926827,,Other
+num__inning_late,0.0,184,29.268292682926827,,Other
+num__early_count_swing,0.0,185,29.268292682926827,,Count
+num__breaking_ball_high,0.0,186,29.268292682926827,,Count
+num__spin_dir,0.0,187,29.268292682926827,,Other
+num__spin_rate_deprecated,0.0,188,29.268292682926827,,Other
+num__break_angle_deprecated,0.0,189,29.268292682926827,,Movement
+num__break_length_deprecated,0.0,190,29.268292682926827,,Movement
+num__ahead_in_count,0.0,191,29.268292682926827,,Count
+num__three_balls,0.0,192,29.268292682926827,,Count
+num__high_pitch,0.0,193,29.268292682926827,,Other
+num__low_pitch,0.0,194,29.268292682926827,,Other
+num__inside_pitch,0.0,195,29.268292682926827,,Other
+num__is_offspeed,0.0,196,29.268292682926827,,Velocity
+num__high_velocity,0.0,197,29.268292682926827,,Velocity
+num__low_velocity,0.0,198,29.268292682926827,,Velocity
+num__high_movement,0.0,199,29.268292682926827,,Movement
+num__full_count,0.0,200,29.268292682926827,,Count
+num__hitters_count,0.0,201,29.268292682926827,,Count
+num__neutral_count,0.0,202,29.268292682926827,,Count
+num__velocity_drop,0.0,203,29.268292682926827,,Velocity
+num__heart_pitch,0.0,204,29.268292682926827,,Other
+num__late_count_take,0.0,205,29.268292682926827,,Count
+num__acuna_zone_corner_hit_rate,0.0,206,29.268292682926827,,Hitter_Specific
+num__acuna_high_vel_swing_rate,0.0,207,29.268292682926827,,Hitter_Specific
+num__acuna_high_movement_swing_rate,0.0,208,29.268292682926827,,Hitter_Specific
+num__acuna_low_movement_swing_rate,0.0,209,29.268292682926827,,Hitter_Specific
+num__acuna_late_inning_swing_rate,0.0,210,29.268292682926827,,Hitter_Specific
+num__acuna_close_game_swing_rate,0.0,211,29.268292682926827,,Hitter_Specific
+num__acuna_first_pitch_swing_rate,0.0,212,29.268292682926827,,Hitter_Specific
+num__acuna_last_pitch_swing_rate,0.0,213,29.268292682926827,,Hitter_Specific
+num__acuna_pitch_type_change_swing_rate,0.0,214,29.268292682926827,,Hitter_Specific
+num__acuna_velocity_drop_swing_rate,0.0,215,29.268292682926827,,Hitter_Specific
+num__acuna_velocity_surge_swing_rate,0.0,216,29.268292682926827,,Hitter_Specific
+num__acuna_location_extreme_swing_rate,0.0,217,29.268292682926827,,Hitter_Specific
+num__acuna_location_heart_swing_rate,0.0,218,29.268292682926827,,Hitter_Specific
+num__acuna_pressure_swing_rate,0.0,219,29.268292682926827,,Hitter_Specific
+num__acuna_opportunity_swing_rate,0.0,220,29.268292682926827,,Hitter_Specific
+num__acuna_zone_corner_swing_rate,0.0,221,29.268292682926827,,Hitter_Specific
+num__acuna_zone_shadow_swing_rate,0.0,222,29.268292682926827,,Hitter_Specific
+num__acuna_zone_heart_swing_rate,0.0,223,29.268292682926827,,Hitter_Specific
+num__acuna_zone_heart_hit_rate,0.0,224,29.268292682926827,,Hitter_Specific
+num__acuna_low_vel_swing_rate,0.0,225,29.268292682926827,,Hitter_Specific
+num__acuna_full_count_swing_rate,0.0,226,29.268292682926827,,Hitter_Specific
+num__count_advantage_encoded,0.0,227,29.268292682926827,,Count
+num__acuna_two_strikes_swing_rate,0.0,228,29.268292682926827,,Hitter_Specific
+num__middle_count,0.0,229,29.268292682926827,,Count
+num__early_count_penalty,0.0,230,29.268292682926827,,Count
+num__early_count_outside_penalty,0.0,231,29.268292682926827,,Count
+num__count_swing_rate_adjustment,0.0,232,29.268292682926827,,Count
+num__early_count_breaking_penalty,0.0,233,29.268292682926827,,Count
+num__early_count_offspeed_penalty,0.0,234,29.268292682926827,,Count
+num__early_count_low_vel_penalty,0.0,235,29.268292682926827,,Count
+num__early_count_high_vel_penalty,0.0,236,29.268292682926827,,Count
+num__acuna_fastball_swing_rate,0.0,237,29.268292682926827,,Hitter_Specific
+num__acuna_breaking_swing_rate,0.0,238,29.268292682926827,,Hitter_Specific
+num__acuna_offspeed_swing_rate,0.0,239,29.268292682926827,,Hitter_Specific
+num__acuna_zone_swing_rate,0.0,240,29.268292682926827,,Hitter_Specific
+num__acuna_outside_swing_rate,0.0,241,29.268292682926827,,Hitter_Specific
+num__acuna_high_swing_rate,0.0,242,29.268292682926827,,Hitter_Specific
+num__acuna_low_swing_rate,0.0,243,29.268292682926827,,Hitter_Specific
+num__acuna_ahead_swing_rate,0.0,244,29.268292682926827,,Hitter_Specific
+num__acuna_behind_swing_rate,0.0,245,29.268292682926827,,Hitter_Specific
+cat__count_advantage_pitcher_ahead,0.0,246,29.268292682926827,,Count

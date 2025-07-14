@@ -1,6 +1,7 @@
 "use client";
 import React, { useState } from "react";
 import PitcherSelector from "../../components/PitcherSelector";
+import CountDisplay from "../../components/CountDisplay";
 import Image from "next/image";
 import { useSearchParams } from "next/navigation";
 import axios from "axios";
@@ -193,8 +194,14 @@ export default function SimulateAtBatPage() {
     const [pitchError, setPitchError] = useState<string | null>(null);
     const [simulating, setSimulating] = useState(false);
     const [simulationResult, setSimulationResult] = useState<any>(null);
-    const [balls, setBalls] = useState<number>(0);
-    const [strikes, setStrikes] = useState<number>(0);
+
+    // At-bat simulation state
+    const [sessionId, setSessionId] = useState<string | null>(null);
+    const [atBatActive, setAtBatActive] = useState(false);
+    const [currentCount, setCurrentCount] = useState({ balls: 0, strikes: 0 });
+    const [atBatOutcome, setAtBatOutcome] = useState<string | null>(null);
+    const [pitchSequence, setPitchSequence] = useState<any[]>([]);
+    const [startingAtBat, setStartingAtBat] = useState(false);
 
     // Fetch pitch types for selected pitcher
     React.useEffect(() => {
@@ -220,6 +227,14 @@ export default function SimulateAtBatPage() {
             })
             .finally(() => setLoadingPitches(false));
     }, [pitcher]);
+
+    // When atBatOutcome is set, reset at-bat controls and count, but keep results visible
+    React.useEffect(() => {
+        if (atBatOutcome) {
+            setAtBatActive(false);
+            setCurrentCount({ balls: 0, strikes: 0 });
+        }
+    }, [atBatOutcome]);
 
     // Convert pixel coordinates to Statcast coordinates
     const convertToStatcastCoords = (pixelX: number, pixelY: number) => {
@@ -304,6 +319,34 @@ export default function SimulateAtBatPage() {
         return null;
     }
 
+    // Start at-bat simulation
+    const handleStartAtBat = async () => {
+        if (!pitcher || !hitter) return;
+
+        setStartingAtBat(true);
+        try {
+            const response = await axios.post("http://localhost:5001/start_at_bat", {
+                pitcher,
+                hitter
+            });
+
+            setSessionId(response.data.session_id);
+            setCurrentCount(response.data.count);
+            setAtBatActive(true);
+            setAtBatOutcome(null);
+            setPitchSequence([]);
+            setSimulationResult(null);
+            setMarker(null);
+
+            console.log("At-bat started:", response.data.message);
+        } catch (error) {
+            console.error("Failed to start at-bat:", error);
+            setPitchError("Failed to start at-bat simulation.");
+        } finally {
+            setStartingAtBat(false);
+        }
+    };
+
     // Handle pitch simulation
     const handleSimulatePitch = async () => {
         if (!pitcher || !hitter || !pitchType || !marker) return;
@@ -314,25 +357,56 @@ export default function SimulateAtBatPage() {
         try {
             const coords = convertToStatcastCoords(marker.x, marker.y);
             const zone = getZone(coords.plate_x, coords.plate_z);
-            const response = await axios.post("http://localhost:5001/simulate_pitch", {
+
+            const requestData = {
+                session_id: sessionId,
                 pitcher,
                 hitter,
                 pitch_type: pitchType,
                 plate_x: coords.plate_x,
                 plate_z: coords.plate_z,
-                zone, // add zone to payload
-                balls,
-                strikes,
+                zone,
+                balls: currentCount.balls,
+                strikes: currentCount.strikes,
                 handedness: DEMO_HANDEDNESS[hitter] || "R"
-            });
+            };
+
+            const response = await axios.post("http://localhost:5001/simulate_pitch", requestData);
 
             setSimulationResult(response.data);
+
+            // Update at-bat state if we have session data
+            if (response.data.count) {
+                setCurrentCount(response.data.count);
+            }
+            if (response.data.at_bat_outcome) {
+                setAtBatOutcome(response.data.at_bat_outcome);
+                setAtBatActive(false);
+            }
+            if (response.data.pitch_sequence) {
+                setPitchSequence(response.data.pitch_sequence);
+            }
+
+            // Clear marker for next pitch
+            setMarker(null);
+
         } catch (error) {
             console.error("Pitch simulation failed:", error);
             setPitchError("Failed to simulate pitch. Please try again.");
         } finally {
             setSimulating(false);
         }
+    };
+
+    // Reset at-bat
+    const handleResetAtBat = () => {
+        setSessionId(null);
+        setAtBatActive(false);
+        setCurrentCount({ balls: 0, strikes: 0 });
+        setAtBatOutcome(null);
+        setPitchSequence([]);
+        setSimulationResult(null);
+        setMarker(null);
     };
 
     let handedness: "R" | "L" = "R";
@@ -343,55 +417,70 @@ export default function SimulateAtBatPage() {
 
     return (
         <div className="min-h-screen bg-gray-50 flex flex-col items-center py-8">
-            <div className="w-full max-w-3xl bg-white rounded-lg shadow p-8 flex flex-col gap-6 text-gray-900">
-                <h1 className="text-3xl font-bold mb-2 text-center">At-Bat Simulator</h1>
-                <div className="flex flex-wrap gap-4 justify-center">
-                    <div className="min-w-[200px]">
+            <div className="w-full flex flex-col items-center gap-6">
+                {/* Controls Card */}
+                <div className="w-full max-w-md mx-auto bg-white rounded-lg shadow p-8 flex flex-col gap-4 items-center">
+                    <h1 className="text-3xl font-bold mb-2 text-center text-gray-900">At-Bat Simulator</h1>
+                    <div className="flex flex-col gap-4 w-full max-w-sm items-center">
                         <PitcherSelector value={pitcher} onChange={p => { setPitcher(p); }} />
+                        <div className="w-full">
+                            <label className="block font-semibold mb-2 text-gray-900">Opponent Team</label>
+                            <select className="w-full border rounded px-3 py-2 text-gray-900" value={team || ""} onChange={e => { setTeam(e.target.value); setHitter(null); }}>
+                                <option value="" disabled>Choose a team</option>
+                                {DEMO_TEAMS.map(t => <option key={t} value={t}>{t}</option>)}
+                            </select>
+                        </div>
+                        <div className="w-full">
+                            <label className="block font-semibold mb-2 text-gray-900">Hitter</label>
+                            <select className="w-full border rounded px-3 py-2 text-gray-900" value={hitter || ""} onChange={e => setHitter(e.target.value)} disabled={!team}>
+                                <option value="" disabled>Choose a hitter</option>
+                                {team && DEMO_LINEUPS[team].map(h => <option key={h} value={h}>{h}</option>)}
+                            </select>
+                        </div>
+                        <div className="w-full">
+                            <label className="block font-semibold mb-2 text-gray-900">Pitch Type</label>
+                            <select className="w-full border rounded px-3 py-2 text-gray-900" value={pitchType || ""} onChange={e => setPitchType(e.target.value)} disabled={!pitcher || loadingPitches || pitchTypes.length === 0 || !atBatActive} style={{ color: pitchType ? getPitchColor(pitchType, pitchTypes) : undefined }}>
+                                <option value="" disabled>{loadingPitches ? "Loading..." : !atBatActive ? "Start at-bat first" : "Choose pitch"}</option>
+                                {pitchTypes.map((pt, i) => (
+                                    <option key={pt} value={pt} style={{ color: getPitchColor(pt, pitchTypes) }}>{pt}</option>
+                                ))}
+                            </select>
+                            {pitchError && <div className="text-red-600 text-xs mt-1">{pitchError}</div>}
+                        </div>
+                        <div className="w-full flex justify-center">
+                            {!atBatActive ? (
+                                <button
+                                    className="bg-green-600 text-white px-6 py-3 rounded-lg font-semibold text-lg hover:bg-green-700 disabled:bg-gray-400 w-full"
+                                    disabled={!pitcher || !hitter || startingAtBat}
+                                    onClick={handleStartAtBat}
+                                >
+                                    {startingAtBat ? "Starting..." : "Start At-Bat"}
+                                </button>
+                            ) : (
+                                <button
+                                    className="bg-red-600 text-white px-6 py-3 rounded-lg font-semibold text-lg hover:bg-red-700 w-full"
+                                    onClick={handleResetAtBat}
+                                >
+                                    Reset At-Bat
+                                </button>
+                            )}
+                        </div>
                     </div>
-                    <div className="min-w-[200px]">
-                        <label className="block font-semibold mb-2">Opponent Team</label>
-                        <select className="w-full border rounded px-3 py-2" value={team || ""} onChange={e => { setTeam(e.target.value); setHitter(null); }}>
-                            <option value="" disabled>Choose a team</option>
-                            {DEMO_TEAMS.map(t => <option key={t} value={t}>{t}</option>)}
-                        </select>
-                    </div>
-                    <div className="min-w-[200px]">
-                        <label className="block font-semibold mb-2">Hitter</label>
-                        <select className="w-full border rounded px-3 py-2" value={hitter || ""} onChange={e => setHitter(e.target.value)} disabled={!team}>
-                            <option value="" disabled>Choose a hitter</option>
-                            {team && DEMO_LINEUPS[team].map(h => <option key={h} value={h}>{h}</option>)}
-                        </select>
-                    </div>
-                    <div className="min-w-[200px]">
-                        <label className="block font-semibold mb-2">Pitch Type</label>
-                        <select className="w-full border rounded px-3 py-2" value={pitchType || ""} onChange={e => setPitchType(e.target.value)} disabled={!pitcher || loadingPitches || pitchTypes.length === 0} style={{ color: pitchType ? getPitchColor(pitchType, pitchTypes) : undefined }}>
-                            <option value="" disabled>{loadingPitches ? "Loading..." : "Choose pitch"}</option>
-                            {pitchTypes.map((pt, i) => (
-                                <option key={pt} value={pt} style={{ color: getPitchColor(pt, pitchTypes) }}>{pt}</option>
-                            ))}
-                        </select>
-                        {pitchError && <div className="text-red-600 text-xs mt-1">{pitchError}</div>}
-                    </div>
-                    <div className="min-w-[200px]">
-                        <label className="block font-semibold mb-2">Ball Count</label>
-                        <select className="w-full border rounded px-3 py-2" value={balls} onChange={e => setBalls(parseInt(e.target.value))}>
-                            {[0, 1, 2, 3].map(b => (
-                                <option key={b} value={b}>{b}</option>
-                            ))}
-                        </select>
-                    </div>
-                    <div className="min-w-[200px]">
-                        <label className="block font-semibold mb-2">Strike Count</label>
-                        <select className="w-full border rounded px-3 py-2" value={strikes} onChange={e => setStrikes(parseInt(e.target.value))}>
-                            {[0, 1, 2].map(s => (
-                                <option key={s} value={s}>{s}</option>
-                            ))}
-                        </select>
-                    </div>
+                    {/* Only show count if at-bat is active and not over */}
+                    {atBatActive && !atBatOutcome && (
+                        <div className="flex justify-center mb-2 w-full mt-4">
+                            <CountDisplay
+                                balls={currentCount.balls}
+                                strikes={currentCount.strikes}
+                                isComplete={atBatOutcome !== null}
+                                outcome={atBatOutcome || undefined}
+                            />
+                        </div>
+                    )}
                 </div>
-                <div className="flex flex-col items-center mt-6">
-                    <div className="mb-2 font-semibold text-lg">Click in the box to place your pitch</div>
+                {/* Strike Zone */}
+                <div className="flex flex-col items-center w-full mt-6">
+                    <div className="mb-2 font-semibold text-lg text-gray-900">Click in the box to place your pitch</div>
                     <StrikeZoneDisplay marker={marker} onSelect={(x, y) => setMarker({ x, y })} markerColor={pitchType ? getPitchColor(pitchType, pitchTypes) : "#d97706"} />
                     {marker && (() => {
                         const coords = convertToStatcastCoords(marker.x, marker.y);
@@ -402,31 +491,50 @@ export default function SimulateAtBatPage() {
                             </div>
                         );
                     })()}
+                    <button
+                        className="bg-blue-600 text-white px-4 py-2 rounded font-semibold w-full mt-6 disabled:bg-gray-400 max-w-md"
+                        disabled={!pitchType || !marker || simulating || !atBatActive || !!atBatOutcome}
+                        onClick={handleSimulatePitch}
+                    >
+                        {simulating ? "Simulating..." : "Simulate Pitch"}
+                    </button>
                 </div>
-                <button
-                    className="bg-green-600 text-white px-4 py-2 rounded font-semibold w-full mt-6 disabled:bg-gray-400"
-                    disabled={!pitchType || !marker || simulating}
-                    onClick={handleSimulatePitch}
-                >
-                    {simulating ? "Simulating..." : "Simulate Pitch"}
-                </button>
-
-                {simulationResult && (
-                    <div className="mt-4 p-4 bg-blue-50 rounded-lg border">
-                        <h3 className="font-semibold text-lg mb-2">Pitch Result</h3>
-                        <div className="grid grid-cols-2 gap-4">
-                            <div>
-                                <span className="font-medium">Outcome:</span> {simulationResult.outcome}
-                            </div>
-                            <div>
-                                <span className="font-medium">Confidence:</span> {(simulationResult.confidence * 100).toFixed(1)}%
-                            </div>
-                            {simulationResult.details && (
-                                <div className="col-span-2">
-                                    <span className="font-medium">Details:</span> {simulationResult.details}
+                {/* Results - Unified Card */}
+                {(simulationResult || pitchSequence.length > 0 || atBatOutcome) && (
+                    <div className="p-6 bg-blue-50 rounded-lg border w-full max-w-md mx-auto mt-6 flex flex-col gap-4 items-center text-gray-900">
+                        <h3 className="font-semibold text-lg mb-2 text-gray-900">Pitch Results & Sequence</h3>
+                        {simulationResult && (
+                            <div className="w-full">
+                                <div>
+                                    <span className="font-medium">Last Pitch Outcome:</span> {simulationResult.outcome}
                                 </div>
-                            )}
-                        </div>
+                                <div>
+                                    <span className="font-medium">Confidence:</span> {(simulationResult.confidence * 100).toFixed(1)}%
+                                </div>
+                                {simulationResult.details && (
+                                    <div>
+                                        <span className="font-medium">Details:</span> {simulationResult.details}
+                                    </div>
+                                )}
+                            </div>
+                        )}
+                        {pitchSequence.length > 0 && (
+                            <div className="w-full">
+                                <div className="font-semibold mb-1">Pitch Sequence:</div>
+                                <div className="space-y-1">
+                                    {pitchSequence.map((pitch, index) => (
+                                        <div key={index} className="text-sm">
+                                            <span className="font-medium">Pitch {index + 1}:</span> {pitch.outcome} ({pitch.pitch_type || simulationResult?.pitch_type || "?"})
+                                        </div>
+                                    ))}
+                                </div>
+                            </div>
+                        )}
+                        {atBatOutcome && (
+                            <div className="w-full mt-2 p-3 rounded bg-green-100 text-center text-xl font-bold text-green-700 border border-green-300">
+                                At-Bat Result: {atBatOutcome.toUpperCase()}
+                            </div>
+                        )}
                     </div>
                 )}
             </div>

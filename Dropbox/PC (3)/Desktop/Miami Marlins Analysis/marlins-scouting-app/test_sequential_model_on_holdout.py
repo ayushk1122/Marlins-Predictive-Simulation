@@ -173,3 +173,11 @@ if 'hyper_speed' in holdout_df.columns and 'launch_speed' in holdout_df.columns:
         print("No rows with both hyper_speed and launch_speed present.")
 else:
     print("hyper_speed or launch_speed column not found in holdout data.") 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
