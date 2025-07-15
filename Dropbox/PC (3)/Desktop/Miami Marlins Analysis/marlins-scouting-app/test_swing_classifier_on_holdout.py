@@ -687,6 +687,53 @@ for c in count_buckets:
     print(f"  {c}: {best_thresholds[c]:.2f}")
 print(f"Balanced accuracy with optimized thresholds: {final_acc:.3f}") 
  
+import matplotlib.pyplot as plt
+import numpy as np
+
+# Custom confusion matrix values
+cm = np.array([[512, 225], [341, 548]])
+labels = ['Swing', 'No Swing']
+
+fig, ax = plt.subplots(figsize=(6, 5))
+
+# Create the matrix using imshow
+cax = ax.imshow(cm, interpolation='nearest', cmap=plt.cm.Blues)
+
+# Add color bar
+plt.colorbar(cax)
+
+# Add labels
+ax.set(
+    xticks=np.arange(len(labels)),
+    yticks=np.arange(len(labels)),
+    xticklabels=labels,
+    yticklabels=labels,
+    xlabel='Predicted',
+    ylabel='Actual',
+    title='Confusion Matrix: Swing vs No Swing (Provided)'
+)
+
+# Rotate x-axis labels
+plt.setp(ax.get_xticklabels(), rotation=0, ha="center", fontsize=12)
+plt.setp(ax.get_yticklabels(), fontsize=12)
+
+# Annotate each cell with its count
+for i in range(cm.shape[0]):
+    for j in range(cm.shape[1]):
+        value = cm[i, j]
+        color = "white" if value > 400 else "black"
+        ax.text(j, i, str(value), ha="center", va="center", color=color, fontsize=16, fontweight='bold')
+
+# Draw gridlines
+ax.set_xticks(np.arange(len(labels)+1)-0.5, minor=True)
+ax.set_yticks(np.arange(len(labels)+1)-0.5, minor=True)
+ax.grid(which="minor", color="gray", linestyle='-', linewidth=0.5)
+ax.tick_params(which="minor", bottom=False, left=False)
+
+plt.tight_layout()
+plt.savefig("confusion_matrix_swing_classifier.png", bbox_inches='tight')
+plt.show()
+ 
  
  
  

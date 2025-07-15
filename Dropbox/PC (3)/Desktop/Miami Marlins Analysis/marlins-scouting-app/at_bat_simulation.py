@@ -727,20 +727,38 @@ class AtBatSimulation:
                         print(f"⚠️ Column '{col}' has non-numeric value: {val} (type: {type(val)})")
             
             try:
-                prediction = self.whiff_model.predict(feature_df)[0]
                 prediction_proba = self.whiff_model.predict_proba(feature_df)[0]
+                whiff_proba = prediction_proba[1] if len(prediction_proba) > 1 else 1 - prediction_proba[0]
+                contact_proba = prediction_proba[0] if len(prediction_proba) > 1 else prediction_proba[0]
                 confidence = max(prediction_proba)
-                
-                print(f"📊 Raw prediction: {prediction}")
+
+                # Confidence difference threshold logic
+                whiff_threshold = 0.35
+                contact_threshold = 0.75
+                confidence_diff_threshold = 0.15
+                if whiff_proba >= whiff_threshold:
+                    is_whiff = True
+                    logic = 'whiff_proba >= whiff_threshold'
+                elif contact_proba >= contact_threshold:
+                    is_whiff = False
+                    logic = 'contact_proba >= contact_threshold'
+                elif (contact_proba - whiff_proba) >= confidence_diff_threshold:
+                    is_whiff = False
+                    logic = 'contact_proba - whiff_proba >= confidence_diff_threshold'
+                else:
+                    is_whiff = True
+                    logic = 'default to whiff (uncertain)'
+
                 print(f"📊 Prediction probabilities: {prediction_proba}")
+                print(f"📊 Logic used: {logic}")
                 print(f"📊 Confidence: {confidence}")
-                
+
                 result = {
-                    'is_whiff': bool(prediction),
+                    'is_whiff': is_whiff,
                     'prediction_confidence': confidence,
-                    'whiff_probability': prediction_proba[1] if len(prediction_proba) > 1 else prediction_proba[0],
-                    'contact_probability': prediction_proba[0] if len(prediction_proba) > 1 else 1 - prediction_proba[0],
-                    'details': f"Whiff: {prediction_proba[1]:.3f}, Contact: {prediction_proba[0]:.3f}"
+                    'whiff_probability': whiff_proba,
+                    'contact_probability': contact_proba,
+                    'details': f"Whiff: {whiff_proba:.3f}, Contact: {contact_proba:.3f}, Logic: {logic}"
                 }
                 print(f"🎯 Final Result: {result}")
                 print("="*50)

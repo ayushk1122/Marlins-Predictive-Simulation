@@ -1,6 +1,6 @@
 import pandas as pd
 import numpy as np
-from sklearn.metrics import classification_report, confusion_matrix, accuracy_score, precision_score, recall_score, f1_score, balanced_accuracy_score
+from sklearn.metrics import auc, classification_report, confusion_matrix, accuracy_score, precision_score, recall_score, f1_score, balanced_accuracy_score, roc_curve
 import joblib
 import warnings
 
@@ -10,7 +10,7 @@ warnings.filterwarnings('ignore')
 def load_holdout_data():
     """Load holdout data for testing"""
     try:
-        df = pd.read_csv('ronald_acuna_jr_holdout_statcast.csv')
+        df = pd.read_csv('ronald_acuna_jr_2023_2024_statcast.csv')
         print(f"✓ Loaded holdout data with {len(df)} pitches")
         return df
     except Exception as e:
@@ -605,6 +605,8 @@ def main():
         # Detailed analysis with threshold predictions
         analyze_whiff_predictions(balanced_swing_df, balanced_y_true, y_pred_threshold, y_proba)
         
+        return balanced_swing_df, balanced_y_true, y_pred_threshold, y_proba
+        
     except Exception as e:
         print(f"✗ Error making predictions: {e}")
         return
@@ -614,7 +616,111 @@ def main():
     print("="*60)
 
 if __name__ == "__main__":
-    main() 
+    # Run main evaluation (assume main() returns df, y_true, y_pred, probabilities)
+    # If your main() does not return these, adjust accordingly
+    try:
+        results = main()
+        if results is not None and isinstance(results, tuple) and len(results) >= 4:
+            df, y_true, y_pred, probabilities = results[:4]
+        else:
+            # Fallback: try to get from global scope if main() doesn't return
+            df = globals().get('swing_df', None)
+            y_true = globals().get('y_true', None)
+            y_pred = globals().get('y_pred', None)
+            probabilities = globals().get('probabilities', None)
+    except Exception as e:
+        print(f"Error running main(): {e}")
+        df = None
+        y_true = None
+        y_pred = None
+        probabilities = None
+
+    # Only plot if we have results
+    if df is not None and y_true is not None and y_pred is not None:
+        import matplotlib.pyplot as plt
+        import numpy as np
+
+        # Your matrix values
+        cm = np.array([[184, 4], [48, 140]])
+        labels = ['Contact', 'Whiff']
+
+        fig, ax = plt.subplots(figsize=(6, 5))
+
+        # Create the matrix using imshow
+        cax = ax.imshow(cm, interpolation='nearest', cmap=plt.cm.Blues)
+
+        # Add color bar
+        plt.colorbar(cax)
+
+        # Add labels
+        ax.set(
+            xticks=np.arange(len(labels)),
+            yticks=np.arange(len(labels)),
+            xticklabels=labels,
+            yticklabels=labels,
+            xlabel='Predicted',
+            ylabel='Actual',
+            title='Confusion Matrix: Whiff vs Contact (Provided)'
+        )
+
+        # Rotate x-axis labels
+        plt.setp(ax.get_xticklabels(), rotation=0, ha="center", fontsize=12)
+        plt.setp(ax.get_yticklabels(), fontsize=12)
+
+        # Annotate each cell with its count
+        for i in range(cm.shape[0]):
+            for j in range(cm.shape[1]):
+                value = cm[i, j]
+                color = "white" if value > 100 else "black"
+                ax.text(j, i, str(value), ha="center", va="center", color=color, fontsize=16, fontweight='bold')
+
+        # Draw gridlines
+        ax.set_xticks(np.arange(len(labels)+1)-0.5, minor=True)
+        ax.set_yticks(np.arange(len(labels)+1)-0.5, minor=True)
+        ax.grid(which="minor", color="gray", linestyle='-', linewidth=0.5)
+        ax.tick_params(which="minor", bottom=False, left=False)
+
+        plt.tight_layout()
+        plt.savefig("confusion_matrix_custom.png", bbox_inches='tight')
+        plt.show()
+
+
+
+
+        # 2. ROC Curve
+        if probabilities is not None:
+            # Assume probabilities is shape (n_samples, 2) with [:,1] = whiff prob
+            fpr, tpr, _ = roc_curve(y_true, probabilities[:,1])
+            roc_auc = auc(fpr, tpr)
+            plt.figure(figsize=(6,5))
+            plt.plot(fpr, tpr, color='darkorange', lw=2, label=f'ROC curve (AUC = {roc_auc:.2f})')
+            plt.plot([0, 1], [0, 1], color='navy', lw=2, linestyle='--')
+            plt.xlim([0.0, 1.0])
+            plt.ylim([0.0, 1.05])
+            plt.xlabel('False Positive Rate')
+            plt.ylabel('True Positive Rate')
+            plt.title('Receiver Operating Characteristic (ROC)')
+            plt.legend(loc="lower right")
+            plt.tight_layout()
+            plt.show(block=True)
+
+        # 3. Pitch Type Accuracy Bar Graph
+        # if 'pitch_type' in df.columns:
+        #     df_plot = df.copy()
+        #     df_plot['correct'] = (y_true == y_pred)
+        #     pitch_type_acc = df_plot.groupby('pitch_type')['correct'].mean().sort_values(ascending=False)
+        #     plt.figure(figsize=(8,4))
+        #     sns.barplot(x=pitch_type_acc.index, y=pitch_type_acc.values, palette='viridis')
+        #     plt.ylabel('Accuracy')
+        #     plt.xlabel('Pitch Type')
+        #     plt.title('Accuracy by Pitch Type')
+        #     plt.ylim(0,1)
+        #     plt.tight_layout()
+        #     plt.show(block=True)
+        # else:
+        #     print('pitch_type column not found in DataFrame, skipping pitch type accuracy plot.')
+    else:
+        print('Not enough data to plot confusion matrix, ROC, or pitch type accuracy.') 
  
  
  
