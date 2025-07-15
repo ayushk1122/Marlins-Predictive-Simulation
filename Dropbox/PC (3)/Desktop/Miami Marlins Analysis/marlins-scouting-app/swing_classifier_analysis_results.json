@@ -1,0 +1,49 @@
+{
+  "model_performance": {
+    "accuracy": 0.6857318573185732,
+    "precision": 0.6467532467532467,
+    "recall": 0.6757123473541384,
+    "f1_score": 0.6609157266091572,
+    "roc_auc": 0.6716250020986182
+  },
+  "dataset_info": {
+    "total_pitches": 1626,
+    "swing_rate": 0.453259532595326,
+    "swing_count": 737,
+    "no_swing_count": 889
+  },
+  "threshold_analysis": [
+    {
+      "Threshold": 0.3,
+      "Precision": "49.7%",
+      "Recall": "92.7%",
+      "F1": "64.7%",
+      "False Positives": "High",
+      "False Negatives": "Low"
+    },
+    {
+      "Threshold": 0.5,
+      "Precision": "51.2%",
+      "Recall": "87.1%",
+      "F1": "64.5%",
+      "False Positives": "High",
+      "False Negatives": "Medium"
+    },
+    {
+      "Threshold": 0.7,
+      "Precision": "51.4%",
+      "Recall": "79.4%",
+      "F1": "62.4%",
+      "False Positives": "High",
+      "False Negatives": "Medium"
+    },
+    {
+      "Threshold": 0.9,
+      "Precision": "54.2%",
+      "Recall": "62.4%",
+      "F1": "58.0%",
+      "False Positives": "High",
+      "False Negatives": "High"
+    }
+  ]
+}

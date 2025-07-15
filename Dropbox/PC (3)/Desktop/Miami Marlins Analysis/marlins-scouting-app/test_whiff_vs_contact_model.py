@@ -1,8 +1,15 @@
 import pandas as pd
 import numpy as np
 from sklearn.metrics import classification_report, confusion_matrix, accuracy_score, precision_score, recall_score, f1_score, balanced_accuracy_score
+from sklearn.metrics import roc_curve, auc, precision_recall_curve
 import joblib
+import matplotlib.pyplot as plt
+import seaborn as sns
 import warnings
+
+# Set style for professional plots
+plt.style.use('seaborn-v0_8-whitegrid')
+sns.set_palette("husl")
 
 # Suppress warnings
 warnings.filterwarnings('ignore')
@@ -627,6 +634,189 @@ def main():
         # Detailed analysis with threshold predictions
         analyze_whiff_predictions(balanced_swing_df, balanced_y_true, y_pred_threshold, y_proba)
         
+        # ============================================================================
+        # COMPREHENSIVE ANALYSIS FOR WHITE PAPER
+        # ============================================================================
+        
+        print("\n" + "="*60)
+        print("COMPREHENSIVE ANALYSIS FOR WHITE PAPER")
+        print("="*60)
+        
+        # Calculate comprehensive metrics
+        accuracy = accuracy_score(balanced_y_true, y_pred_threshold)
+        precision = precision_score(balanced_y_true, y_pred_threshold)
+        recall = recall_score(balanced_y_true, y_pred_threshold)
+        f1 = f1_score(balanced_y_true, y_pred_threshold)
+        
+        print(f"\nModel Performance Summary:")
+        print(f"Accuracy: {accuracy:.4f} ({accuracy*100:.2f}%)")
+        print(f"Precision: {precision:.4f} ({precision*100:.2f}%)")
+        print(f"Recall: {recall:.4f} ({recall*100:.2f}%)")
+        print(f"F1-Score: {f1:.4f} ({f1*100:.2f}%)")
+        
+        # 1. CONFUSION MATRIX
+        print("\n1. Creating Confusion Matrix...")
+        cm = confusion_matrix(balanced_y_true, y_pred_threshold)
+        print(f"Confusion Matrix Raw Values:")
+        print(f"True Negatives (Contact → Contact): {cm[0,0]}")
+        print(f"False Positives (Contact → Whiff): {cm[0,1]}")
+        print(f"False Negatives (Whiff → Contact): {cm[1,0]}")
+        print(f"True Positives (Whiff → Whiff): {cm[1,1]}")
+        
+        # Debug: Check if any values are zero
+        print(f"\nConfusion Matrix Debug:")
+        print(f"Matrix shape: {cm.shape}")
+        print(f"All values: {cm.flatten()}")
+        print(f"Any zero values: {np.any(cm == 0)}")
+        print(f"Sum of all values: {np.sum(cm)}")
+        print(f"Expected sum: {len(balanced_y_true)}")
+        
+        plt.figure(figsize=(10, 8))
+        
+        # Use a more robust colormap and ensure annotations are visible
+        sns.heatmap(cm, annot=True, fmt='d', cmap='Reds', 
+                    xticklabels=['Contact', 'Whiff'], 
+                    yticklabels=['Contact', 'Whiff'],
+                    cbar_kws={'label': 'Count'})
+        
+        # Add explicit text annotations to ensure visibility
+        for i in range(2):
+            for j in range(2):
+                value = cm[i, j]
+                plt.text(j + 0.5, i + 0.5, str(value), 
+                        ha='center', va='center', fontsize=14, fontweight='bold',
+                        color='black' if value > 0 else 'red')
+        
+        plt.title('Whiff vs Contact Classifier Confusion Matrix\nRonald Acuña Jr. Holdout Dataset', 
+                  fontsize=16, fontweight='bold')
+        plt.ylabel('True Label', fontsize=12)
+        plt.xlabel('Predicted Label', fontsize=12)
+        plt.tight_layout()
+        plt.savefig('whiff_contact_confusion_matrix.png', dpi=300, bbox_inches='tight')
+        plt.show()
+        
+        # 2. ROC CURVE
+        print("\n2. Creating ROC Curve...")
+        fpr, tpr, _ = roc_curve(balanced_y_true, y_proba[:, 1])  # Use whiff probability
+        roc_auc = auc(fpr, tpr)
+        
+        plt.figure(figsize=(8, 6))
+        plt.plot(fpr, tpr, color='darkorange', lw=2, label=f'ROC curve (AUC = {roc_auc:.3f})')
+        plt.plot([0, 1], [0, 1], color='navy', lw=2, linestyle='--')
+        plt.xlim([0.0, 1.0])
+        plt.ylim([0.0, 1.05])
+        plt.xlabel('False Positive Rate', fontsize=12)
+        plt.ylabel('True Positive Rate', fontsize=12)
+        plt.title('Receiver Operating Characteristic (ROC) Curve\nWhiff vs Contact Classifier', 
+                  fontsize=16, fontweight='bold')
+        plt.legend(loc="lower right")
+        plt.grid(True, alpha=0.3)
+        plt.tight_layout()
+        plt.savefig('whiff_contact_roc_curve.png', dpi=300, bbox_inches='tight')
+        plt.show()
+        
+        # 3. PITCH TYPE ACCURACY BAR CHART
+        print("\n3. Creating Pitch Type Accuracy Bar Chart...")
+        
+        # Calculate accuracy by pitch type
+        pitch_type_accuracy = {}
+        pitch_type_counts = {}
+        
+        for pitch_type in balanced_swing_df['pitch_type'].unique():
+            if pd.isna(pitch_type):
+                continue
+            mask = balanced_swing_df['pitch_type'] == pitch_type
+            if mask.sum() >= 5:  # Only include pitch types with at least 5 samples
+                y_true_subset = balanced_y_true[mask]
+                y_pred_subset = y_pred_threshold[mask]
+                accuracy_subset = accuracy_score(y_true_subset, y_pred_subset)
+                pitch_type_accuracy[pitch_type] = accuracy_subset
+                pitch_type_counts[pitch_type] = mask.sum()
+        
+        # Sort by accuracy
+        sorted_pitch_types = sorted(pitch_type_accuracy.items(), key=lambda x: x[1], reverse=True)
+        
+        if sorted_pitch_types:
+            pitch_types = [pt[0] for pt in sorted_pitch_types]
+            accuracies = [pt[1] for pt in sorted_pitch_types]
+            counts = [pitch_type_counts[pt] for pt in pitch_types]
+            
+            plt.figure(figsize=(12, 8))
+            bars = plt.bar(range(len(pitch_types)), accuracies)
+            plt.xlabel('Pitch Type', fontsize=12)
+            plt.ylabel('Accuracy', fontsize=12)
+            plt.title('Whiff vs Contact Classification Accuracy by Pitch Type\nRonald Acuña Jr. Holdout Dataset', 
+                      fontsize=16, fontweight='bold')
+            plt.xticks(range(len(pitch_types)), pitch_types)
+            plt.ylim(0, 1)
+            
+            # Add count labels on bars
+            for i, (bar, count) in enumerate(zip(bars, counts)):
+                height = bar.get_height()
+                plt.text(bar.get_x() + bar.get_width()/2., height + 0.01,
+                        f'n={count}', ha='center', va='bottom', fontsize=10)
+            
+            # Color bars by accuracy
+            colors = plt.cm.viridis(accuracies)
+            for i, (bar, color) in enumerate(zip(bars, colors)):
+                bar.set_color(color)
+            
+            plt.tight_layout()
+            plt.savefig('whiff_contact_pitch_type_accuracy.png', dpi=300, bbox_inches='tight')
+            plt.show()
+            
+            # Print pitch type accuracy table
+            print("\nPitch Type Accuracy Table:")
+            print("=" * 50)
+            print(f"{'Pitch Type':<10} {'Accuracy':<10} {'Count':<8}")
+            print("-" * 50)
+            for pitch_type, accuracy in sorted_pitch_types:
+                count = pitch_type_counts[pitch_type]
+                print(f"{pitch_type:<10} {accuracy:<10.3f} {count:<8}")
+            print("=" * 50)
+        else:
+            print("No pitch types with sufficient samples for accuracy analysis.")
+        
+        # 4. DETAILED CLASSIFICATION REPORT
+        print("\n4. Detailed Classification Report:")
+        print("=" * 50)
+        print(classification_report(balanced_y_true, y_pred_threshold, target_names=['Contact', 'Whiff']))
+        
+        # 5. SAVE COMPREHENSIVE RESULTS
+        print("\n5. Saving Comprehensive Results...")
+        results_summary = {
+            'model_performance': {
+                'accuracy': accuracy,
+                'precision': precision,
+                'recall': recall,
+                'f1_score': f1,
+                'roc_auc': roc_auc
+            },
+            'dataset_info': {
+                'total_swings': len(balanced_swing_df),
+                'contact_count': (balanced_y_true == 0).sum(),
+                'whiff_count': (balanced_y_true == 1).sum(),
+                'contact_rate': (balanced_y_true == 0).sum() / len(balanced_y_true),
+                'whiff_rate': (balanced_y_true == 1).sum() / len(balanced_y_true)
+            },
+            'pitch_type_accuracy': dict(sorted_pitch_types) if sorted_pitch_types else {}
+        }
+        
+        # Save results to JSON
+        import json
+        with open('whiff_contact_analysis_results.json', 'w') as f:
+            json.dump(results_summary, f, indent=2, default=str)
+        
+        print("\n" + "="*60)
+        print("ANALYSIS COMPLETE!")
+        print("="*60)
+        print("Generated files for white paper:")
+        print("- whiff_contact_confusion_matrix.png")
+        print("- whiff_contact_roc_curve.png")
+        print("- whiff_contact_pitch_type_accuracy.png")
+        print("- whiff_contact_analysis_results.json")
+        print("="*60)
+        
     except Exception as e:
         print(f"✗ Error making predictions: {e}")
         return
@@ -648,3 +838,7 @@ if __name__ == "__main__":
  
  
  
+ 
+ 
+ 
+

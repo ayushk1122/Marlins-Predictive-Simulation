@@ -1,0 +1,5 @@
+Threshold,Precision,Recall,F1,False Positives,False Negatives
+0.3,49.7%,92.7%,64.7%,High,Low
+0.5,51.2%,87.1%,64.5%,High,Medium
+0.7,51.4%,79.4%,62.4%,High,Medium
+0.9,54.2%,62.4%,58.0%,High,High
