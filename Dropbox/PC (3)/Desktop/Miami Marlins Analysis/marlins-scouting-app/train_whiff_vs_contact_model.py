@@ -18,7 +18,7 @@ warnings.filterwarnings('ignore')
 def load_career_data():
     """Load Acuna Jr.'s complete career data"""
     try:
-        df = pd.read_csv('ronald_acuna_jr_2023_2024_statcast.csv')
+        df = pd.read_csv('ronald_acuna_jr_complete_career_statcast.csv')
         print(f"✓ Test Loaded Acuna Jr. data with {len(df)} pitches")
         return df
     except Exception as e:
@@ -28,7 +28,7 @@ def load_career_data():
 def load_babip_data():
     """Load BABIP data with whiff rates"""
     try:
-        babip_df = pd.read_csv('pitch_type_zone_batting_averages.csv')
+        babip_df = pd.read_csv('ronald_acuna_jr_averages.csv')
         print(f"✓ Loaded BABIP data with {len(babip_df)} pitch type x zone combinations")
         
         # Create a dictionary for quick lookup
@@ -71,8 +71,8 @@ def get_babip_features(pitch_type, zone, babip_lookup):
 def calculate_zone(plate_x, plate_z):
     """Calculate Statcast zone (1-14) based on plate_x and plate_z coordinates."""
     # Strike zone boundaries (approximate)
-    sz_left = -0.85
-    sz_right = 0.85
+    sz_left = -0.71
+    sz_right = 0.71
     sz_bot = 1.5
     sz_top = 3.5
     
@@ -418,6 +418,7 @@ def main():
 
 if __name__ == "__main__":
     main() 
+ 
  
  
  
