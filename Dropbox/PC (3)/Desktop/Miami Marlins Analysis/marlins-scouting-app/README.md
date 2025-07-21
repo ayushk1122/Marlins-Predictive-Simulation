@@ -1,36 +1,65 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# ⚾ AI-Powered Baseball At-Bat Simulator
 
-## Getting Started
+This project simulates a Major League Baseball at-bat using machine learning models trained on Statcast data. Coaches, analysts, and fans can select a pitcher, configure a pitch type and location, and simulate how a specific hitter would respond — including swing probability, whiff/contact prediction, and expected batted ball outcomes.
 
-First, run the development server:
+The system is built with a multi-model pipeline and a web interface that provides intuitive visualization of each simulated pitch scenario.
 
-```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
-```
+---
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+## Key Components & File Descriptions
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+### Model Training
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+- **`train_sequential_models.py`**  
+  Trains the *Swing vs No Swing* classification model. This model predicts whether a batter will swing at a given pitch based on pitch characteristics, count context, and batter-specific tendencies.
 
-## Learn More
+- **`train_whiff_vs_contact_model.py`**  
+  Trains the *Whiff vs Contact* model. If the batter swings, this model determines whether the swing results in a whiff (miss) or contact (hit/ball in play).
 
-To learn more about Next.js, take a look at the following resources:
+---
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+### Simulation Engine
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+- **`at_bat_simulation.py`**  
+  The core script that drives the simulation. It loads the trained models and uses them in sequence to simulate a pitch result:  
+    1. Will the batter swing?  
+    2. If yes, is it a whiff or contact?  
+    3. If contact, ends and resets at bat
+    4. Walk and strikeout events end at bat as well 
 
-## Deploy on Vercel
+---
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+### Backend API
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+- **`pybaseball_service.py`**  
+  This Python backend server handles API requests from the frontend React app. It receives pitch input parameters, runs the simulation using the above models, and returns the result to be displayed.
+
+---
+
+### Data Downloading
+
+- **`download_acuna_complete_career.py`**  
+  Downloads complete career pitch-level Statcast data for Ronald Acuña Jr. Modify the player ID in this file to fetch data for any other MLB player. This script powers both hitter and pitcher model training workflows.
+
+---
+
+### Frontend Interface (React)
+
+- **`page.tsx`**  
+  Located at:  
+  `Marlins-Predictive-Simulation/Dropbox/PC (3)/Desktop/Miami Marlins Analysis/marlins-scouting-app/src/app/simulate-atbat/page.tsx`  
+  This is the main frontend page for the at-bat simulator. It allows the user to:  
+    - Select a pitcher and opposing hitter  
+    - Choose pitch type and location  
+    - Submit inputs to simulate the at-bat and display the results with contextual insights
+
+## Tech Stack
+
+- **Frontend**: React, TypeScript  
+- **Backend**: Python (FastAPI or Flask style)  
+- **ML Models**: XGBoost, scikit-learn, Transformers  
+- **Data**: MLB Statcast via pybaseball  
+
+---
+
+
