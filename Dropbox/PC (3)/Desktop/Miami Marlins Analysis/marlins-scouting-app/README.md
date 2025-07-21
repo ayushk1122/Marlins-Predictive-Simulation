@@ -10,7 +10,7 @@ The system is built with a multi-model pipeline and a web interface that provide
 
 ### Model Training
 
-- **`train_sequential_models.py`**  
+- [`train_sequential_models.py`](./marlins-scouting-app/train_sequential_models.py)
   Trains the *Swing vs No Swing* classification model. This model predicts whether a batter will swing at a given pitch based on pitch characteristics, count context, and batter-specific tendencies.
 
 - **`train_whiff_vs_contact_model.py`**  
