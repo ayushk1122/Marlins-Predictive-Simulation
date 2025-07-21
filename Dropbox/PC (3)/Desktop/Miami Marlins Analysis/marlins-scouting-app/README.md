@@ -1,6 +1,6 @@
 # ⚾ AI-Powered Baseball At-Bat Simulator
 
-This project simulates a Major League Baseball at-bat using machine learning models trained on Statcast data. Coaches, analysts, and fans can select a pitcher, configure a pitch type and location, and simulate how a specific hitter would respond — including swing probability, whiff/contact prediction, and expected batted ball outcomes.
+This project simulates a Major League Baseball at-bat using machine learning models trained on Statcast data. Coaches, analysts, and fans can select a pitcher, configure a pitch type and location, and simulate how a specific hitter would respond — including swing probability, whiff/contact prediction, and expected batted ball outcomes (coming soon).
 
 The system is built with a multi-model pipeline and a web interface that provides intuitive visualization of each simulated pitch scenario.
 
