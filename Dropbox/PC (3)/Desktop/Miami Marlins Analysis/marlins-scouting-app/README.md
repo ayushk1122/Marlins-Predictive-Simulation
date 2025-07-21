@@ -45,7 +45,7 @@ The system is built with a multi-model pipeline and a web interface that provide
 
 ### Frontend Interface (React)
 
-- [`page.tsx`](./src/app/) 
+- [`page.tsx`](.src/app/simulate-atbat/pages.tsx) 
   Located at:  
   `Marlins-Predictive-Simulation/Dropbox/PC (3)/Desktop/Miami Marlins Analysis/marlins-scouting-app/src/app/simulate-atbat/page.tsx`  
   This is the main frontend page for the at-bat simulator. It allows the user to:  
